@@ -36,7 +36,7 @@ from py21cmanalysis import tools as p21a_tools
 import numpy as np
 
 
-def init_fisher_from_fiducial(config_file: str, q_scale: float = 3., clean_existing_dir: bool = False) -> None :
+def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existing_dir: bool = False) -> None :
 
     """ 
     Initialise the runs for a fisher analysis according to 

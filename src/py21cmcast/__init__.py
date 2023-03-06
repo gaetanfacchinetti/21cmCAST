@@ -1,5 +1,5 @@
-from .initialise_fisher import (
-    init_fisher_from_fiducial,
+from .initialise_runs import (
+    init_runs_from_fiducial,
 )
 
 from .run_from_config import (
