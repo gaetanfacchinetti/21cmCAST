@@ -38,8 +38,44 @@ import matplotlib.transforms as transforms
 import numpy as np
 import copy
 import os
+import shutil
 
-from py21cmanalysis import tools as p21a_tools
+
+
+def make_directory(path: str, clean_existing_dir:bool = True):
+    
+    if not os.path.exists(path): 
+        os.mkdir(path)
+    else:
+        if clean_existing_dir is True:
+            clean_directory(path)
+        else:
+            print("The directory "  + path + " already exists")
+            return True
+
+    return False
+
+
+
+def clean_directory(path: str):
+    """ Clean the directory at the path: path """
+
+    for filename in os.listdir(path):
+        file_path = os.path.join(path, filename)
+        
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+
+
+
 
 def read_config_params(config_items, int_type = True):
     """
@@ -158,55 +194,6 @@ def read_power_spectra(folder_name: str):
 
 
 
-
-def create_from_scracth(path_dir:str) -> None : 
-    """ Create the folder that will hold the fisher analysis from scracth """
-
-    p21a_tools.make_directory(path_dir, clean_existing_dir = False)
-    p21a_tools.make_directory(path_dir + "/config_files", clean_existing_dir = False)
-    p21a_tools.make_directory(path_dir + "/runs", clean_existing_dir = False)
-    p21a_tools.make_directory(path_dir + "/exec", clean_existing_dir = False)
-
-    
-
-def prepare_sbatch_file(name_run: str, mail_user:str) -> None:
-
-    content = \
-"""#!/bin/bash
-#
-#SBATCH --job-name=fish1
-#SBATCH --output=test_fisher.txt
-#
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
-#SBATCH --time=01:00:00
-#SBATCH --mem=40000
-#
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=""" + \
-mail_user + \
-"""
-#SBATCH --array=0-15
-
-module load releases/2021b
-module load SciPy-bundle/2021.10-foss-2021b
-module load GSL/2.7-GCC-11.2.0
-module load Pillow/8.3.1-GCCcore-11.2.0
-module load h5py/3.6.0-foss-2021b 
-module load PyYAML/5.4.1-GCCcore-11.2.0
-
-source ~/exo21cmFAST_release/bin/activate
-
-export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
-
-FILES=(../runs/"""  + \
-    name_run + \
-"""/run_list/*)
-
-srun python ./run_fisher.py ${FILES[$SLURM_ARRAY_TASK_ID]} -nomp $SLURM_CPUS_PER_TASK"""
-
-    with open("submit_run_fisher_" +  name_run +  ".sh", 'w') as f:
-        print(content, file = f)
 
 
 

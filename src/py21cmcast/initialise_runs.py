@@ -30,8 +30,7 @@
 
 import configparser
 
-from py21cmfishlite import tools as p21fl_tools 
-from py21cmanalysis import tools as p21a_tools
+from py21cmcast import tools as p21c_tools
 
 import numpy as np
 
@@ -57,8 +56,6 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
 
     config.read(config_file)
 
-    print(f'Calculating derivatives at {q_scale} percent from fiducial')
-
     name            = config.get('run', 'name')
     output_dir      = config.get('run', 'output_dir')
     cache_dir       = config.get('run', 'cache_dir')
@@ -82,10 +79,10 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     except configparser.NoOptionError:
         print("Warning: coarsen factor undifined")
 
-    user_params       = p21fl_tools.read_config_params(config.items('user_params'))
-    flag_options      = p21fl_tools.read_config_params(config.items('flag_options'))
-    astro_params_fid  = p21fl_tools.read_config_params(config.items('astro_params'), int_type = False)
-    astro_params_vary = p21fl_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
+    user_params       = p21c_tools.read_config_params(config.items('user_params'))
+    flag_options      = p21c_tools.read_config_params(config.items('flag_options'))
+    astro_params_fid  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False)
+    astro_params_vary = p21c_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
 
     vary_array = np.array([-1, 1])
     astro_params_run_all = {}
@@ -93,7 +90,7 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
 
     # Make the directory to store the outputs and everything
     output_run_dir = output_dir + "/" + name.upper() + "/"
-    existing_dir = p21a_tools.make_directory(output_run_dir, clean_existing_dir = clean_existing_dir)
+    existing_dir = p21c_tools.make_directory(output_run_dir, clean_existing_dir = clean_existing_dir)
 
     if existing_dir is True:
         print('WARNING: Cannot create a clean new folder because clean_existing_dir is False')
@@ -102,7 +99,7 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     for param, value in astro_params_vary.items(): 
         
         p_fid = astro_params_fid[param]
-
+       
 
         if isinstance(value, float) and value > 0:
             q = value/100*vary_array
@@ -114,30 +111,21 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
         else:
             p = p_fid*(1+q)
 
-            
+        print('Parameter ' + str(param) + ' varied by ' + str(value) + ' percent of the fiducial')
+
         astro_params_run = astro_params_fid.copy()
 
         for i, pp in enumerate(p):
             astro_params_run[param] = pp
-            if param == 'L_X': # change L_X and L_X_MINI at the same time
-                astro_params_run['L_X_MINI'] = pp
-
             astro_params_run_all[f'{param}_{q[i]}'] = astro_params_run.copy()
         
     
     # Write down the separate config files
     irun = 0
     for key, astro_params in astro_params_run_all.items() : 
-        p21fl_tools.write_config_params(output_run_dir + '/Config_' + key + ".config", name, cache_dir, extra_params, user_params, flag_options, astro_params, key)
+        p21c_tools.write_config_params(output_run_dir + '/Config_' + key + ".config", name, cache_dir, extra_params, user_params, flag_options, astro_params, key)
         irun = irun + 1
-
-    # Save the fiducial configuration somewhere
-    # with open(output_run_dir + "/fiducial_params.txt", 'w') as f:
-    #    print("# Here we write down the fiductial parameters used to generate the run list", file = f)
-    #    print(extra_params, file = f)
-    #    print(user_params,  file = f)
-    #    print(flag_options, file = f)
-    #    print(astro_params_fid, file = f)
+        
 
     return 
 

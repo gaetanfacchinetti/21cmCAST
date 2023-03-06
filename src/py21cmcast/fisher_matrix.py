@@ -8,14 +8,13 @@ import copy
 
 import py21cmsense    as p21s
 import py21cmfast     as p21f
-import py21cmanalysis as p21a
 
 from astropy.cosmology import Planck18 as cosmo
 from astropy import units
 from astropy import constants
 
-from py21cmfishlite import tools as p21fl_tools
-
+from py21cmcast import power_spectra as p21c_ps
+from py21cmcast import tools         as p21c_tools
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
@@ -87,7 +86,9 @@ def extract_noise_from_fiducial(k, dsqr, observation) :
 
 
     sensitivity       = p21s.PowerSpectrum(observation=observation, k_21 = k / units.Mpc, 
-                                            delta_21 = dsqr * (units.mK**2), foreground_model='moderate') 
+                                            delta_21 = dsqr * (units.mK**2), 
+                                            foreground_model='moderate') 
+    
     k_sens            = sensitivity.k1d.value * p21s.config.COSMO.h
     std_21cmSense     = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
 
@@ -165,7 +166,7 @@ class Run:
         self._lightcone       = lightcone
         self._lc_redshifts    = lightcone.lightcone_redshifts
         self._chunk_indices   = [np.argmin(np.abs(self._lc_redshifts - z)) for z in z_bins]
-        self._z_arr, self._ps = p21a.compute_powerspectra_1D(lightcone, chunk_indices = self._chunk_indices, 
+        self._z_arr, self._ps = p21c_ps.compute_powerspectra_1D(lightcone, chunk_indices = self._chunk_indices, 
                                                                 n_psbins=self._k_bins.value, logk=logk, 
                                                                 remove_nans=False, vb=False)
         
@@ -502,7 +503,7 @@ class CombinedRuns:
 
     def plot_power_spectrum(self, std = None, figname = None, plot=True) :  
 
-        fig = p21fl_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, self.power_spectrum, 
+        fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, self.power_spectrum, 
                                                 func_err = np.sqrt(self.ps_poisson_noise**2 + self.ps_modeling_noise**2),
                                                 std = std, title=r'$\Delta_{21}^2 ~{\rm [mK^2]}$', 
                                                 xlim = [self._k_bins[0].value, self._k_bins[-1].value], logx=self._logk, logy=True)
@@ -584,14 +585,14 @@ class Fiducial(CombinedRuns):
     
     def chi2_UV_luminosity_functions(self, data_set = 'Bouwens21', plot = True):
 
-        z_uv, m_uv, l_uv, sigma_l_uv   = p21fl_tools.load_uv_luminosity_functions(data_set)
+        z_uv, m_uv, l_uv, sigma_l_uv   = p21c_tools.load_uv_luminosity_functions(data_set)
         m_uv_sim , _ , log10_l_uv_sim  = p21f.compute_luminosity_function(redshifts = z_uv, 
                                                     user_params  = self._user_params, 
                                                     astro_params = self._astro_params, 
                                                     flag_options = self._flag_options)
         
         if plot is True:
-            fig = p21fl_tools.plot_func(m_uv_sim, 10**log10_l_uv_sim, ylog=True, xlim=[-14, -25], ylim =[1e-12, 1], xlabel=r'$M_{\rm UV}$', ylabel=r'$\phi_{\rm UV}$')
+            fig = p21c_tools.plot_func(m_uv_sim, 10**log10_l_uv_sim, ylog=True, xlim=[-14, -25], ylim =[1e-12, 1], xlabel=r'$M_{\rm UV}$', ylabel=r'$\phi_{\rm UV}$')
             for iz, z in enumerate(z_uv) :
                     fig.gca().errorbar(m_uv[iz], l_uv[iz], yerr=sigma_l_uv[iz], linestyle='', capsize=2, elinewidth=0.5, label=r'${}$'.format(z))
 
@@ -615,21 +616,17 @@ class Fiducial(CombinedRuns):
         return _reduced_chi2
     
 
-    
-    def test_statistic_luminosity_function() :
-        pass
-
     def plot_power_spectrum(self):
         super().plot_power_spectrum(std=self._ps_exp_noise, figname = self._dir_path + "/fiducial_power_spectrum.pdf")
 
     def plot_xH_box(self):
-        fig = p21fl_tools.plot_func(self.z_glob, self.xH_box,
+        fig = p21c_tools.plot_func(self.z_glob, self.xH_box,
                                     xlabel=r'$z$',
                                     ylabel=r'$x_{\rm H_{I}}$')
         fig.savefig(self._dir_path + '/fiducial_xH.pdf', bbox_inches='tight')
     
     def plot_global_signal(self):
-        fig = p21fl_tools.plot_func(self.z_glob, self.global_signal, ylim=[-150, 50],
+        fig = p21c_tools.plot_func(self.z_glob, self.global_signal, ylim=[-150, 50],
                                     xlabel=r'$z$',
                                     ylabel=r'$\overline{T_{\rm b}}~\rm [mK]$')
         fig.savefig(self._dir_path + '/fiducial_global_signal.pdf', bbox_inches='tight')
@@ -865,7 +862,7 @@ class Parameter:
     def plot_ps_derivative(self):
 
         der_array = [self._ps_derivative[key] for key in self._ps_derivative.keys()]
-        fig = p21fl_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
+        fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], logx=self._logk, logy=False)
         fig.savefig(self._dir_path + "/derivatives_" + self._name + ".pdf")
@@ -887,7 +884,7 @@ class Parameter:
         _ps        = np.array(_ps)[_order]
         _ps_errors = np.array(_ps_errors)[_order]
 
-        fig = p21fl_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, _ps, func_err = _ps_errors, 
+        fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, _ps, func_err = _ps_errors, 
                                                 std = self._fiducial.ps_exp_noise, 
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
                                                 logx=self._logk, logy=True, istd = _order[0], **kwargs)
@@ -904,7 +901,7 @@ class Parameter:
 
 
         der_array = [self.weighted_ps_derivative(kind=key) for key in self._ps_derivative.keys()]
-        fig = p21fl_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
+        fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{1}{\sigma}\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], logx=self._logk, logy=False)
         fig.savefig(self._dir_path + "/weighted_derivatives_" + self._name + ".pdf")

@@ -7,8 +7,8 @@ from .run_from_config import (
 )
 
 from .tools import (
-    create_from_scracth,
-    prepare_sbatch_file,
+    read_config_params,
+    write_config_params,
     read_power_spectra,
     make_triangle_plot,
     plot_func_vs_z_and_k,

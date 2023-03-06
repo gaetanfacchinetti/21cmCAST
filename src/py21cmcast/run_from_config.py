@@ -31,7 +31,7 @@
 import configparser
 import os
 
-from py21cmfishlite import tools as p21fl_tools
+from py21cmcast import tools as p21c_tools
 import py21cmfast   as p21f
 
 def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: int = None) :
@@ -87,9 +87,9 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
         print("Warning: coarsen factor undifined")
         coarsen_factor = None 
 
-    user_params     = p21fl_tools.read_config_params(config.items('user_params'))
-    flag_options    = p21fl_tools.read_config_params(config.items('flag_options'))
-    astro_params    = p21fl_tools.read_config_params(config.items('astro_params'), int_type=False)
+    user_params     = p21c_tools.read_config_params(config.items('user_params'))
+    flag_options    = p21c_tools.read_config_params(config.items('flag_options'))
+    astro_params    = p21c_tools.read_config_params(config.items('astro_params'), int_type=False)
 
 
     # manually set the number of threads
