@@ -6,5 +6,9 @@ In order to work properly, the codes requires to have a working installation of
 - [**21cmFAST**](https://21cmfast.readthedocs.io/en/latest/)
 - [**21cmSense**](https://21cmsense.readthedocs.io/en/latest/)
 
+To do list:
+- [x] rearrange the code in a self-contained package
+- [ ] uniformely use astropy units throughout the entire code
+- [ ] add docstrings to the classes
 
 [^1]: *Charlotte A. Mason, Julian B. Muñoz, Bradley Greig, Andrei Mesinger, Jaehong Park,* 21cmfish: Fisher-matrix framework for fast parameter forecasts from the cosmic 21-cm signal [[arXiv:2212.09797]](https://arxiv.org/abs/2212.09797)
