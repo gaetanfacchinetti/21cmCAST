@@ -1,5 +1,5 @@
 import argparse
-import py21cmfishlite as p21fish
+import py21cmcast as p21c
 
 parser = argparse.ArgumentParser()
 parser.add_argument("config_file", type = str, help="Path to config file")
@@ -34,7 +34,7 @@ while j < n_runs and i < n_runs_max:
         random_seed = None
 
     # Run the lightcone with the given seed
-    lightcone, run_id = p21fish.run_lightcone_from_config(config_file, n_omp, random_seed)
+    lightcone, run_id = p21c.run_lightcone_from_config(config_file, n_omp, random_seed)
 
     if lightcone is not None:
 

@@ -1,1 +1,3 @@
 scripts/runs/*
+scripts/exec/*.sh
+scripts/exec/*.txt
