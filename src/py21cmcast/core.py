@@ -2,154 +2,17 @@ import glob
 
 import numpy as np
 import pickle
-from scipy import interpolate
+from scipy   import interpolate
 from astropy import units
-import copy
 
-import py21cmsense    as p21s
 import py21cmfast     as p21f
 
-from astropy.cosmology import Planck18 as cosmo
-from astropy import units
-from astropy import constants
-
-from py21cmcast import power_spectra as p21c_ps
+from py21cmcast import power         as p21c_p
 from py21cmcast import tools         as p21c_tools
+from py21cmcast import experiments   as p21c_exp
 
 import warnings
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
-
-
-def define_HERA_observation(z):
-    """ 
-    Define a set of HERA observation objects (see 21cmSense) 
-    according to an array of observation redshifts 
-
-    Parameters
-    ----------
-        z_arr: list (or numpy array) of floats
-            redshifts at which the observations are done    
-    """
-
-     ## Define the layout for the 
-    hera_layout = p21s.antpos.hera(
-        hex_num = 11,             # number of antennas along a side
-        separation= 14 * units.m,  # separation between antennas (in metres)
-        dl=12.12 * units.m        # separation between rows
-    )
-
-    hera = []
-
-
-    beam = p21s.beam.GaussianBeam(
-        frequency = 1420.40575177 * units.MHz / (1+z),  # just a reference frequency
-        dish_size = 14 * units.m
-    )
-
-    hera = p21s.Observatory(
-        antpos = hera_layout,
-        beam = beam,
-        latitude = 0.536189 * units.radian,
-        Trcv = 100 * units.K
-    )
-
-    observation = p21s.Observation(
-        observatory   = hera,
-        n_channels    = 80, 
-        bandwidth     = 8 * units.MHz,
-        time_per_day  = 6 * units.hour,   # Number of hours of observation per day
-        n_days        = 166.6667,         # Number of days of observation
-    )
-
-    return observation
-
-
-
-def extract_noise_from_fiducial(k, dsqr, observation) :
-    """
-    Give the noise associated to power spectra delta_arr
-
-    Params:
-    -------
-    k       : list of floats 
-        array of modes k in [Mpc^{-1}]
-    dsqr    : list of floats 
-        Power spectrum in [mK^2] ordered with the modes k in 
-    observation : Observation object (c.f. 21cmSense)
-
-    Returns:
-    --------
-    k_sens       : list of list of floats
-    std_sens     : the standard deviation of the sensitivity [mK]
-
-    """
-
-
-    sensitivity       = p21s.PowerSpectrum(observation=observation, k_21 = k / units.Mpc, 
-                                            delta_21 = dsqr * (units.mK**2), 
-                                            foreground_model='moderate') 
-    
-    k_sens            = sensitivity.k1d.value * p21s.config.COSMO.h
-    std_21cmSense     = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
-
-    std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.nan)(k)
-
-    return std 
-
-
-
-
-def define_grid_modes_redshifts(z_min: float, B: float, k_min = 0.1 / units.Mpc, k_max = 1 / units.Mpc, z_max: float = 19, logk=False) : 
-    """
-    ## Defines a grid of modes and redshift on which to define the noise and on which the Fisher matrix will be evaluated
-    
-    Params:
-    -------
-    z_min : float
-        Minimal redshift on the grid
-    B     : float
-        Bandwidth of the instrument
-
-    """
-
-    # Definition of the 21 cm frequency (same as in 21cmSense)
-    f21 = 1420.40575177 * units.MHz
-
-    def deltak_zB(z, B) : 
-        return 2*np.pi * f21 * cosmo.H(z) / constants.c / (1+z)**2 / B * 1000 * units.m / units.km
-
-    def generate_z_bins(z_min, z_max, B):
-        fmax = f21/(1+z_min)
-        fmin = f21/(1+z_max)
-        f_bins    = np.arange(fmax.value, fmin.value, -B.value) * f21.unit
-        f_centers = f_bins[:-1] - B/2
-        z_bins    = (f21/f_bins).value - 1
-        z_centers = (f21/f_centers).value -1
-        return z_bins, z_centers
-    
-    def generate_k_bins(z_min, k_min, k_max, B):
-        
-        dk = deltak_zB(z_min, B) 
-        _k_min = dk
-
-        if _k_min < k_min :
-            _k_min = k_min
-
-        if logk is False:
-            return np.arange(_k_min.value, k_max.value, dk.value) * k_min.unit
-        else:
-            ValueError("logarithmic k-bins not implemented yet")
-
-    # Get the redshift bin edges and centers
-    z_bins, _ = generate_z_bins(z_min, z_max, B)
-    
-    # Get the k-bins edges
-    k_bins = generate_k_bins(z_min, k_min, k_max, B)
-
-    return z_bins, k_bins
-
-
-
 
 
 class Run:
@@ -166,7 +29,7 @@ class Run:
         self._lightcone       = lightcone
         self._lc_redshifts    = lightcone.lightcone_redshifts
         self._chunk_indices   = [np.argmin(np.abs(self._lc_redshifts - z)) for z in z_bins]
-        self._z_arr, self._ps = p21c_ps.compute_powerspectra_1D(lightcone, chunk_indices = self._chunk_indices, 
+        self._z_arr, self._ps = p21c_p.compute_powerspectra_1D(lightcone, chunk_indices = self._chunk_indices, 
                                                                 n_psbins=self._k_bins.value, logk=logk, 
                                                                 remove_nans=False, vb=False)
         
@@ -576,8 +439,8 @@ class Fiducial(CombinedRuns):
         if self._observation == 'HERA':
             _std = [None] * len(self.z_array)
             for iz, z in enumerate(self.z_array): 
-                _hera     = define_HERA_observation(z)
-                _std[iz]  = extract_noise_from_fiducial(self.k_array, self.power_spectrum[iz], _hera)
+                _hera     = p21c_exp.define_HERA_observation(z)
+                _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array, self.power_spectrum[iz], _hera)
 
         self._ps_exp_noise = _std
 

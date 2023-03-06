@@ -1,8 +1,10 @@
-from .initialise_runs import (
-    init_runs_from_fiducial,
+from .experiments import (
+    define_HERA_observation,
+    extract_noise_from_fiducial,
 )
 
-from .run_from_config import (
+from .runs import (
+    init_runs_from_fiducial,
     run_lightcone_from_config,
 )
 
@@ -16,11 +18,12 @@ from .tools import (
     load_uv_luminosity_functions,
 )
 
-from .fisher_matrix import (
-    define_HERA_observation,
-    extract_noise_from_fiducial,
-    evaluate_fisher_matrix,
+from .power import (
     define_grid_modes_redshifts,
+)
+
+from .core import (
+    evaluate_fisher_matrix,
     Fiducial,
     Run,
     CombinedRuns,

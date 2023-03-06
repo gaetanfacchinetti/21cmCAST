@@ -40,6 +40,8 @@ import copy
 import os
 import shutil
 
+import copy
+
 
 
 def make_directory(path: str, clean_existing_dir:bool = True):
