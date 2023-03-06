@@ -260,6 +260,30 @@ def ellipse_from_covariance(cov_matrix, fiducial):
 
 
 
+_PARAMS_PLOT = {
+    'theta'             : {'tex_name' : r'\theta'}, # default parameters
+    'F_STAR10'          : {'tex_name' : r'\log_{10}[f_{\star, 10}]'},
+    'F_STAR7_MINI'      : {'tex_name' : r'\log_{10}[f_{\star, 7}^{\rm mini}]'},
+    'ALPHA_STAR'        : {'tex_name' : r'\alpha_{\star}', 'min': -0.7, 'max' : 1.7, 'ticks' : []},
+    'ALPHA_STAR_MINI'   : {'tex_name' : r'\alpha_{\star}^{\rm mini}', 'min': -0.7, 'max' : 1.7, 'ticks' : []},
+    't_STAR'            : {'tex_name' : r't_{\star}', 'min': -0.3, 'max' : 1.3, 'ticks' : []},
+    'F_ESC10'           : {'tex_name' : r'\log_{10}[f_{\rm esc, 10}]', 'min': -2, 'max' : 0.1},
+    'F_ESC7_MINI'       : {'tex_name' : r'\log_{10}[f_{\rm esc, 7}^{\rm mini}]', 'min': -2, 'max' : 0.1},
+    'ALPHA_ESC'         : {'tex_name' : r'\alpha_{\rm esc}', 'min': -1.4, 'max': 0.6, 'ticks' : []},
+    'L_X'               : {'tex_name' : r'\log_{10}\left[\frac{L_X}{\rm units}\right]', 'min': 40, 'max': 41},
+    'L_X_MINI'          : {'tex_name' : r'\log_{10}\left[\frac{L_X^{\rm mini}}{\rm units}\right]', 'min': 40, 'max': 41},
+    'M_TURN'            : {'tex_name' : r'\log_{10}\left[\frac{M_{\rm turn}}{{\rm M}_\odot}\right]', 'min': 7.6, 'max': 8.9, 'ticks' : []},
+    'NU_X_THRESH'       : {'tex_name' : r'E_0~[\rm eV]', 'min': 300, 'max': 700, 'ticks' : []},
+    'DM_LOG10_LIFETIME' : {'tex_name' : r'\log_{\rm 10}\left[\frac{\tau_{\chi}}{\rm s}\right]', 'min': 25.6, 'max': 26.4, 'ticks' : []},
+    'DM_LOG10_MASS'     : {'tex_name' : r'\log_{10}[\frac{m_{\chi}}{\rm eV}]', 'min': 3, 'max': 11,  'ticks' : []},
+    'DM_FHEAT_APPROX_PARAM_LOG10_F0' : {'tex_name' : r'\log_{10}[f_0]', 'min': -2, 'max': 1,  'ticks' : []},
+    'DM_FHEAT_APPROX_PARAM_A'  : {'tex_name' : r'a', 'min': -2, 'max': 1,  'ticks' : []},
+    'DM_FHEAT_APPROX_PARAM_B'  : {'tex_name' : r'b', 'min': -2, 'max': 1,  'ticks' : []},
+    'LOG10_XION_at_Z_HEAT_MAX' : {'tex_name' : r'\log_{10}[\bar x_e^{\rm init}]', 'min': -2, 'max': 1,  'ticks' : []},
+    'LOG10_TK_at_Z_HEAT_MAX'   : {'tex_name' : r'\log_{10}[\frac{\bar T_K^{\rm init}}{\rm K}]', 'min': -2, 'max': 1,  'ticks' : []},
+    }
+
+
 def make_triangle_plot(covariance_matrix, name_params, fiducial_params) : 
 
     #####################################
@@ -288,30 +312,6 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
                    'DM_LOG10_LIFETIME', 'DM_FHEAT_APPROX_PARAM_LOG10_F0', 'DM_FHEAT_APPROX_PARAM_A', 'DM_FHEAT_APPROX_PARAM_B', 
                    'LOG10_XION_at_Z_HEAT_MAX', 'LOG10_TK_at_Z_HEAT_MAX']
     
-    
-    _parameters_plot = {
-        'F_STAR10'          : {'tex_name' : r"$\log_{10}[f_{\star, 10}]$"},
-        'F_STAR7_MINI'      : {'tex_name' : r"$\log_{10}[f_{\star, 7}^{\rm mini}]$"},
-        'ALPHA_STAR'        : {'tex_name' : r"$\alpha_{\star}$", 'min': -0.7, 'max' : 1.7, 'ticks' : []},
-        'ALPHA_STAR_MINI'   : {'tex_name' : r"$\alpha_{\star}^{\rm mini}$", 'min': -0.7, 'max' : 1.7, 'ticks' : []},
-        't_STAR'            : {'tex_name' : r"$t_{\star}$", 'min': -0.3, 'max' : 1.3, 'ticks' : []},
-        'F_ESC10'           : {'tex_name' : r"$\log_{10}[f_{\rm esc, 10}]$", 'min': -2, 'max' : 0.1},
-        'F_ESC7_MINI'       : {'tex_name' : r"$\log_{10}[f_{\rm esc, 7}^{\rm mini}]$", 'min': -2, 'max' : 0.1},
-        'ALPHA_ESC'         : {'tex_name' : r"$\alpha_{\rm esc}$", 'min': -1.4, 'max': 0.6, 'ticks' : []},
-        'L_X'               : {'tex_name' : r"$\log_{10}\left[\frac{L_X}{\rm units}\right]$", 'min': 40, 'max': 41},
-        'L_X_MINI'          : {'tex_name' : r"$\log_{10}\left[\frac{L_X^{\rm mini}}{\rm units}\right]$", 'min': 40, 'max': 41},
-        'M_TURN'            : {'tex_name' : r"$\log_{10}\left[\frac{M_{\rm turn}}{{\rm M}_\odot}\right]$", 'min': 7.6, 'max': 8.9, 'ticks' : []},
-        'NU_X_THRESH'       : {'tex_name' : r"$E_0~[\rm eV]$", 'min': 300, 'max': 700, 'ticks' : []},
-        'DM_LOG10_LIFETIME' : {'tex_name' : r"$\log_{\rm 10}\left[\frac{\tau_{\chi}}{\rm s}\right]$", 'min': 25.6, 'max': 26.4, 'ticks' : []},
-        'DM_LOG10_MASS'     : {'tex_name' : r"$\log_{10}[\frac{m_{\chi}}{\rm eV}]$", 'min': 3, 'max': 11,  'ticks' : []},
-        'DM_FHEAT_APPROX_PARAM_LOG10_F0' : {'tex_name' : r"$\log_{10}[f_0]$", 'min': -2, 'max': 1,  'ticks' : []},
-        'DM_FHEAT_APPROX_PARAM_A'  : {'tex_name' : r"$a$", 'min': -2, 'max': 1,  'ticks' : []},
-        'DM_FHEAT_APPROX_PARAM_B'  : {'tex_name' : r"$b$", 'min': -2, 'max': 1,  'ticks' : []},
-        'LOG10_XION_at_Z_HEAT_MAX' : {'tex_name' : r"$\log_{10}[\bar x_e^{\rm init}]$", 'min': -2, 'max': 1,  'ticks' : []},
-        'LOG10_TK_at_Z_HEAT_MAX'   : {'tex_name' : r"$\log_{10}[\frac{\bar T_K^{\rm init}}{\rm K}]$", 'min': -2, 'max': 1,  'ticks' : []},
-        }
-
-
 
     #####################################
     ## Go through all the possible cases and corresponding parameters
@@ -324,8 +324,8 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
             ## Information concertning this case
             _default_info  = {'tex_name' : r'$\theta$', 'min' : None, 'max' : None, 'ticks' : []}
             
-            _param_info_x  = _parameters_plot.get(name_params[i], _default_info)
-            _param_info_y  = _parameters_plot.get(name_params[j], _default_info)
+            _param_info_x  = _PARAMS_PLOT.get(name_params[i], _default_info)
+            _param_info_y  = _PARAMS_PLOT.get(name_params[j], _default_info)
 
             # add the fiducial values in the infos
             val_x = fiducial_params[name_params[i]]     
@@ -347,7 +347,7 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
                 axs[j][i].yaxis.set_ticklabels([])
 
             if j == ngrid -1 :
-                axs[j][i].set_xlabel(_param_info_x.get('tex_name', r'$\theta$'))
+                axs[j][i].set_xlabel(r'${}$'.format(_param_info_x.get('tex_name', r'$\theta$')))
                 x_ticks = _param_info_x.get('ticks', [])
                 if x_ticks != [] :
                     axs[j][i].set_xticks(_param_info_x.get('ticks', []))
@@ -356,7 +356,7 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
                     tick.set_rotation(55)
 
             if i == 0 and j > 0:
-                axs[j][i].set_ylabel(_param_info_y.get('tex_name', r'$\theta$'))
+                axs[j][i].set_ylabel(r'${}$'.format(_param_info_y.get('tex_name', r'$\theta$')))
                 y_ticks = _param_info_y.get('ticks', [])
                 if y_ticks != [] :
                     axs[j][i].set_yticks(_param_info_y.get('ticks', []))

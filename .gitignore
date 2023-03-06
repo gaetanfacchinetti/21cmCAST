@@ -1,3 +1,4 @@
 scripts/runs/*
 scripts/exec/*.sh
 scripts/exec/*.txt
+src/py21cmcast/__pycache__

@@ -496,15 +496,6 @@ class Fiducial(CombinedRuns):
 
 
 
-parameters_tex_name = {'F_STAR10' : r'\log_{10} f_{\star, 10}', 
-                        'ALPHA_STAR' : r'\alpha_{\star}',
-                        'F_ESC10' : r'\log_{10} f_{\rm esc, 10}', 
-                        'ALPHA_ESC' : r'\alpha_{\rm esc}',
-                        'L_X' : r'\log_{10} L_X',
-                        'NU_X_THRESH' : r'E_0',
-                        't_STAR': r't_\star',
-                        'M_TURN': r'\log_{10} M_{\rm turn}'}
-
 
 
 class Parameter:
@@ -521,7 +512,7 @@ class Parameter:
         self._k_bins         = self._fiducial.k_bins
         self._logk           = self._fiducial.logk
 
-        self._tex_name       = parameters_tex_name.get(self._name, r'\theta')
+        self._tex_name       = p21c_tools._PARAMS_PLOT.get(self._name)['tex_name']
         self._load           = kwargs.get('load', True)
 
         if name not in self._astro_params:
