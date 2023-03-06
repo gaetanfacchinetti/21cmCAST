@@ -1,0 +1,128 @@
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_cfg.py:57: UserWarning: Your configuration file is out of date. Updating...
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_cfg.py:57: UserWarning: Your configuration file is out of date. Updating...
+  warnings.warn(
+  warnings.warn(
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFA/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+Random seed set to: 1993
+Treating config file : ../runs/FID1/Config_DM_LOG10_MASS_-0.01.config
+Warning: coarsen factor undifined
+Random seed set to: 1993
+Treating config file : ../runs/FID1/Config_DM_LOG10_MASS_0.01.config
+Warning: coarsen factor undifined
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_density
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vx_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vy_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+/home/users/g/f/gfacchin/exo21cmFAST_release/exo21cmFAST/src/py21cmfast/_utils.py:821: UserWarning: Trying to remove array that isn't yet created: lowres_vz_2LPT
+  warnings.warn(f"Trying to remove array that isn't yet created: {k}")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 Random seed set to: 1993
+Treating config file : ../runs/FID1/Config_t_STAR_-0.05.config
+Warning: coarsen factor undifined
+Random seed set to: 1993
+Treating config file : ../runs/FID1/Config_t_STAR_0.05.config
+Warning: coarsen factor undifined
