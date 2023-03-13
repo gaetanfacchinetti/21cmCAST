@@ -85,8 +85,9 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     flag_options      = p21c_tools.read_config_params(config.items('flag_options'))
     astro_params_fid  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False)
     astro_params_vary = p21c_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
+    one_side_der      = p21c_tools.read_config_params(config.items('one_side_param_derivative'))
 
-    vary_array = np.array([-1, 1])
+    
     astro_params_run_all = {}
     astro_params_run_all['FIDUCIAL'] = astro_params_fid
 
@@ -100,26 +101,36 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
 
     for param, value in astro_params_vary.items(): 
         
+        _side_der = one_side_der.get(param, None)
+        
+        if _side_der is None :
+            vary_array = np.array([-100, 100])
+        else:
+            if _side_der == '+': 
+                vary_array = np.array([+100])
+            elif _side_der == '-':
+                vary_array = np.array([-100])
+            else: 
+                ValueError("The arguments of one_side_param_derivative have to be '+' or '-'")
+
         p_fid = astro_params_fid[param]
        
-
         if isinstance(value, float) and value > 0:
-            q = value/100*vary_array
+            q = value/vary_array
         else : 
-            q = q_scale/100*vary_array
+            q = q_scale/vary_array
 
         if p_fid == 0.:
             p = q
         else:
             p = p_fid*(1+q)
-
-        print('Parameter ' + str(param) + ' varied by ' + str(value) + ' percent of the fiducial')
+            print('Parameter ' + str(param) + ' varied by ' + str(value) + ' percent of the fiducial')
 
         astro_params_run = astro_params_fid.copy()
 
         for i, pp in enumerate(p):
             astro_params_run[param] = pp
-            astro_params_run_all[f'{param}_{q[i]}'] = astro_params_run.copy()
+            astro_params_run_all[param + '_{:.4e}'.format(pp)] = astro_params_run.copy()
         
     
     # Write down the separate config files
@@ -137,7 +148,9 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
 
 
 def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: int = None) :
-    """ ## Run a lightcone from a config file 
+
+    """ 
+    ## Run a lightcone from a config file 
 
     Parameters
     ----------
@@ -157,7 +170,6 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     run_id: string
         identifier of the run
     """
-
 
     ####################### Getting the data ############################
 
@@ -220,20 +232,25 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                 coarsen_factor       = coarsen_factor, 
                 lightcone_quantities = lightcone_quantities,
                 global_quantities    = global_quantities,
-                verbose_ntbk         = False,
+                verbose_ntbk         = True,
                 direc                = cache_path, 
                 random_seed          = random_seed,
             )
         
-    except :
+    except Exception as e :
+
+        print(e)
 
         lightcone = None
         run_id    = None
 
-    # at the end, we clear the cache 
-    p21f.cache_tools.clear_cache(direc=cache_path)
-    # delete the directory once it has been emptied
-    os.rmdir(cache_path) 
+    try: 
+        # at the end, we clear the cache 
+        p21f.cache_tools.clear_cache(direc=cache_path)
+        # delete the directory once it has been emptied
+        os.rmdir(cache_path) 
+    except FileNotFoundError:
+        pass
 
     return lightcone, run_id
 

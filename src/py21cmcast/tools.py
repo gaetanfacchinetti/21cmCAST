@@ -275,6 +275,7 @@ _PARAMS_PLOT = {
     'M_TURN'            : {'tex_name' : r'\log_{10}\left[\frac{M_{\rm turn}}{{\rm M}_\odot}\right]', 'min': 7.6, 'max': 8.9, 'ticks' : []},
     'NU_X_THRESH'       : {'tex_name' : r'E_0~[\rm eV]', 'min': 300, 'max': 700, 'ticks' : []},
     'DM_LOG10_LIFETIME' : {'tex_name' : r'\log_{\rm 10}\left[\frac{\tau_{\chi}}{\rm s}\right]', 'min': 25.6, 'max': 26.4, 'ticks' : []},
+    'DM_DECAY_RATE'     : {'tex_name' : r'\Gamma ~ [\rm s^{-1}]'},
     'DM_LOG10_MASS'     : {'tex_name' : r'\log_{10}[\frac{m_{\chi}}{\rm eV}]', 'min': 3, 'max': 11,  'ticks' : []},
     'DM_FHEAT_APPROX_PARAM_LOG10_F0' : {'tex_name' : r'\log_{10}[f_0]', 'min': -2, 'max': 1,  'ticks' : []},
     'DM_FHEAT_APPROX_PARAM_A'  : {'tex_name' : r'a', 'min': -2, 'max': 1,  'ticks' : []},
@@ -512,12 +513,12 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
                 if ylim is not None: 
                     axs[i][j].set_ylim(ylim)
 
-                logx = kwargs.get('logx', False)
-                logy = kwargs.get('logy', False)
+                xlog = kwargs.get('xlog', False)
+                ylog = kwargs.get('ylog', False)
 
-                if logx is True:
+                if xlog is True:
                     axs[i][j].set_xscale('log')
-                if logy is True:
+                if ylog is True:
                     axs[i][j].set_yscale('log')
                 
 

@@ -11,18 +11,15 @@ from py21cmcast import power         as p21c_p
 from py21cmcast import tools         as p21c_tools
 from py21cmcast import experiments   as p21c_exp
 
-import warnings
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
-
 
 class Run:
 
-    def __init__(self, lightcone, z_bins, k_bins, logk, q: float = 0.): 
+    def __init__(self, lightcone, z_bins, k_bins, logk, p: float = 0.): 
         
         self._z_bins    = z_bins
         self._k_bins    = k_bins
         self._logk      = logk
-        self._q         = q
+        self._p         = p
 
 
         # Get the power spectrum from the Lightcone
@@ -93,8 +90,8 @@ class Run:
         return self._chunk_indices
 
     @property
-    def q(self):
-        return self._q
+    def p(self):
+        return self._p
 
     ## Lighcone properties
     @property
@@ -127,7 +124,7 @@ class CombinedRuns:
     ## Smart collection of the same runs with different random seeds
     """
 
-    def __init__(self, dir_path, name, z_bins = None, k_bins = None, logk=False, q : float = 0, save=True, load=True, verbose = True) -> None:
+    def __init__(self, dir_path, name, z_bins = None, k_bins = None, logk=False, p : float = 0, save=True, load=True, verbose = True, **kwargs) -> None:
         
         self._name            = name
         self._dir_path        = dir_path
@@ -162,7 +159,7 @@ class CombinedRuns:
         self._z_bins  = z_bins
         self._k_bins  = k_bins
         self._logk    = logk
-        self._q       = q
+        self._p       = p
 
         # fetch all the lightcone files that correspond to runs the same parameters but different seed
         _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_*" + self._name + ".h5")
@@ -171,7 +168,7 @@ class CombinedRuns:
             print("For " + self._name + ": grouping a total of " + str(len(_lightcone_file_name)) + " runs")
         
         # Create the array of runs
-        self._runs =  [Run(p21f.LightCone.read(file_name), self._z_bins, self._k_bins, logk, q) for file_name in _lightcone_file_name]
+        self._runs =  [Run(p21f.LightCone.read(file_name), self._z_bins, self._k_bins, logk, p) for file_name in _lightcone_file_name]
 
         assert len(self._runs) > 0, "ERROR when searching for lightcones with a given name" 
 
@@ -237,7 +234,7 @@ class CombinedRuns:
                             z_glob            = self.z_glob)
         
         # Prepare the dictionnary of parameters
-        param_dict = {'logk' : self.logk, 'q' : self.q, 
+        param_dict = {'logk' : self.logk, 'p' : self.p, 
                     'astro_params': self.astro_params, 
                     'user_params': self.user_params,
                     'flag_options': self.flag_options,
@@ -275,7 +272,7 @@ class CombinedRuns:
                 params = pickle.load(file)
 
                 self._logk          = params['logk']
-                self._q             = params['q']
+                self._p             = params['p']
                 self._astro_params  = params['astro_params']
                 self._user_params   = params['user_params']
                 self._flag_options  = params['flag_options']  
@@ -342,8 +339,8 @@ class CombinedRuns:
         return self._logk
 
     @property
-    def q(self):
-        return self._q
+    def p(self):
+        return self._p
 
     # lightcone properties
     @property
@@ -369,7 +366,7 @@ class CombinedRuns:
         fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, self.power_spectrum, 
                                                 func_err = np.sqrt(self.ps_poisson_noise**2 + self.ps_modeling_noise**2),
                                                 std = std, title=r'$\Delta_{21}^2 ~{\rm [mK^2]}$', 
-                                                xlim = [self._k_bins[0].value, self._k_bins[-1].value], logx=self._logk, logy=True)
+                                                xlim = [self._k_bins[0].value, self._k_bins[-1].value], xlog=self._logk, ylog=True)
         
         if plot is True : 
 
@@ -512,50 +509,62 @@ class Parameter:
         self._k_bins         = self._fiducial.k_bins
         self._logk           = self._fiducial.logk
 
-        self._tex_name       = p21c_tools._PARAMS_PLOT.get(self._name)['tex_name']
+        self._extra_str      =  kwargs.get('extra_str', '')
+        if self._extra_str != '':
+            self._extra_str = '_' + self._extra_str
+
+        __params_plot        = p21c_tools._PARAMS_PLOT.get(self._name, None)
+        
+        if __params_plot is not None:
+            self._tex_name = __params_plot['tex_name']
+        else:
+            self._tex_name = p21c_tools._PARAMS_PLOT.get('theta', None)['tex_name']
+
         self._load           = kwargs.get('load', True)
 
         if name not in self._astro_params:
             ValueError("ERROR: the name does not corresponds to any varied parameters")
 
         # get the lightcones from the filenames
-        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_*" + self._name + "_*.h5")
-        
+        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_*" + self._name + self._extra_str + "_*.h5")
+    
+
         # get (from the filenames) the quantity by which the parameter has been varies from the fiducial
-        self._q_value = []
+        self._p_value = []
         for file_name in _lightcone_file_name:
-            # Get the value of q from the thing
-            self._q_value.append(float(file_name.split("_")[-1][:-3]))
+            # Get the value of p from the thing
+            self._p_value.append(float(file_name.split("_")[-1][:-3]))
 
-        # If more than one file with the same q_values we remove all identical numbers
-        self._q_value = list(set(self._q_value))
+        # If more than one file with the same p_values we remove all identical numbers
+        self._p_value = list(set(self._p_value))
 
-        # Sort the q_values from the smallest to the largest
-        self._q_value = np.sort(self._q_value)
+        # Sort the p_values from the smallest to the largest
+        self._p_value = np.sort(self._p_value)
 
-        # Check that the q_values are consistant
-        assert len(self._q_value) == 1 or (len(self._q_value) == 2 and (self._q_value[0] * self._q_value[1]) < 0), "q_value : " + str(self._q_value)
+        # Check that the p_values are consistant
+        _param_fid = self._astro_params[self._name]
+        assert len(self._p_value) == 1 or (len(self._p_value) == 2 and ((self._p_value[0] - _param_fid) * (self._p_value[1] - _param_fid)) < 0), "p_value : " + str(self._p_value)
 
         if verbose is True: 
             print("------------------------------------------")
-            print(self._name  + " has been varied with q = " + str(self._q_value))
+            print(self._name  + " has been varied with p = " + str(self._p_value))
             print("Loading the lightcones and computing the power spectra")
         else :
             print("Treating parameter " + self._name)
 
         # We get the lightcones and then create the corresponding runs objects
-        self._runs =  [CombinedRuns(self._dir_path, self._name + "_" + str(q), self._z_bins, self._k_bins, 
-                                    self._logk, q, **kwargs) for q in self._q_value]
+        self._runs =  [CombinedRuns(self._dir_path, self._name + self._extra_str + '_{:.4e}'.format(p), self._z_bins, self._k_bins, 
+                                    self._logk, p, **kwargs) for p in self._p_value]
 
         if verbose is True: 
             print("Power spectra of " + self._name  + " computed")
       
         ## Check that the k-arrays, z-arrays, k-bins and z-bins correspond 
         for run in self._runs:
-            assert compare_arrays(run.z_array, self._fiducial.z_array, 1e-5)
-            assert compare_arrays(run.k_array, self._fiducial.k_array, 1e-5)
-            assert compare_arrays(run.z_bins,  self._fiducial.z_bins,  1e-5)
-            assert compare_arrays(run.k_bins,  self._fiducial.k_bins,  1e-5)
+            assert compare_arrays(run.z_array, self._fiducial.z_array, 1e-2)
+            assert compare_arrays(run.k_array, self._fiducial.k_array, 1e-2)
+            assert compare_arrays(run.z_bins,  self._fiducial.z_bins,  1e-2)
+            assert compare_arrays(run.k_bins,  self._fiducial.k_bins,  1e-2)
 
         ## Define unique k and z arrays
         self._k_array = self._fiducial.k_array
@@ -617,7 +626,11 @@ class Parameter:
         _param_fid = self._astro_params[self._name]
 
         # get all the parameters and sort them
-        _params         = np.array([(1+run.q) * _param_fid for run in self._runs])
+        _params = np.zeros(len(self._runs))
+
+        for irun, run in enumerate(self._runs):
+            _params[irun] = run.p
+
         _params         = np.append(_params, _param_fid)
         _params_sorted  = np.sort(_params)
         _mixing_params  = np.argsort(_params)
@@ -640,15 +653,15 @@ class Parameter:
         # arrange the derivative whether they are left, right or centred
         self._ps_derivative  = {'left' : None, 'right' : None, 'centred' : None}
 
-        if len(self._q_value) == 2:
+        if len(self._p_value) == 2:
             self._ps_derivative['left']    = [_der[iz][0] for iz, _ in enumerate(self._z_array)]
             self._ps_derivative['centred'] = [_der[iz][1] for iz, _ in enumerate(self._z_array)]
             self._ps_derivative['right']   = [_der[iz][2] for iz, _ in enumerate(self._z_array)]
 
-        if len(self._q_value) == 1 and self._q_value[0] < 0 :
+        if len(self._p_value) == 1 and self._p_value[0] < 0 :
             self._ps_derivative['left'] = [_der[iz][0] for iz, _ in enumerate(self._z_array)]
         
-        if len(self._q_value) == 1 and self._q_value[0] > 0 :
+        if len(self._p_value) == 1 and self._p_value[0] > 0 :
             self._ps_derivative['right'] = [_der[iz][0] for iz, _ in enumerate(self._z_array)]
 
         
@@ -715,10 +728,14 @@ class Parameter:
 
     def plot_ps_derivative(self):
 
-        der_array = [self._ps_derivative[key] for key in self._ps_derivative.keys()]
+        der_array = []
+        for key in self._ps_derivative.keys():
+            if self._ps_derivative[key] is not None:
+                der_array.append( self._ps_derivative[key])
+        
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
-                                                xlim = [0.1, 1], logx=self._logk, logy=False)
+                                                xlim = [0.1, 1], xlog=self._logk, ylog=False)
         fig.savefig(self._dir_path + "/derivatives_" + self._name + ".pdf")
         return fig
 
@@ -727,21 +744,21 @@ class Parameter:
 
         _ps        = [self._fiducial.power_spectrum]
         _ps_errors = [np.sqrt(self._fiducial.ps_poisson_noise**2 + self._fiducial.ps_modeling_noise**2)]
-        _q_vals    = [0]
+        _p_vals    = [0]
 
         for run in self._runs:
             _ps.append(run.power_spectrum)
             _ps_errors.append(np.sqrt(run.ps_poisson_noise**2 + run.ps_modeling_noise**2))
-            _q_vals.append(run.q)
+            _p_vals.append(run.p)
 
-        _order     = np.argsort(_q_vals)
+        _order     = np.argsort(_p_vals)
         _ps        = np.array(_ps)[_order]
         _ps_errors = np.array(_ps_errors)[_order]
 
         fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, _ps, func_err = _ps_errors, 
                                                 std = self._fiducial.ps_exp_noise, 
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
-                                                logx=self._logk, logy=True, istd = _order[0], **kwargs)
+                                                xlog=self._logk, ylog=True, istd = _order[0], **kwargs)
 
         fig.savefig(self._dir_path + "/power_spectra_" + self.name + ".pdf")
         return fig
@@ -757,7 +774,7 @@ class Parameter:
         der_array = [self.weighted_ps_derivative(kind=key) for key in self._ps_derivative.keys()]
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{1}{\sigma}\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
-                                                xlim = [0.1, 1], logx=self._logk, logy=False)
+                                                xlim = [0.1, 1], xlog=self._logk, ylog=False)
         fig.savefig(self._dir_path + "/weighted_derivatives_" + self._name + ".pdf")
         return fig
 

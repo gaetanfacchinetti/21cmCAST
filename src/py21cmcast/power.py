@@ -32,6 +32,8 @@ import numpy as np
 import powerbox.tools as pb_tools
 
 from astropy.cosmology import Planck18 as cosmo
+from astropy.cosmology import z_at_value
+
 from astropy import units
 from astropy import constants
 
@@ -235,7 +237,7 @@ def compute_powerspectra_1D(lightcone, nchunks=15,
         else:
             dist_center = lc_distances[start + int(0.5 * index_center)]
             
-        z_centers[i] = cosmo.z_at_value(lightcone.cosmo_params.cosmo.comoving_distance, dist_center * units.Mpc)
+        z_centers[i] = z_at_value(lightcone.cosmo_params.cosmo.comoving_distance, dist_center * units.Mpc)
 
         #####
 

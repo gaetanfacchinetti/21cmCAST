@@ -77,7 +77,9 @@ def extract_noise_from_fiducial(k, dsqr, observation) :
     k_sens            = sensitivity.k1d.value * p21s.config.COSMO.h
     std_21cmSense     = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
 
-    std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.nan)(k)
+    #print(k, k_sens, std_21cmSense)
 
-    return std 
+    std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.inf)(k)
+
+    return std
 
