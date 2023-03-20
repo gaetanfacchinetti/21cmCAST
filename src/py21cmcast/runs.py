@@ -86,7 +86,7 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     astro_params_fid  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False)
     astro_params_vary = p21c_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
     one_side_der      = p21c_tools.read_config_params(config.items('one_side_param_derivative'))
-
+    percentage        = p21c_tools.read_config_params(config.items('percentage'))
     
     astro_params_run_all = {}
     astro_params_run_all['FIDUCIAL'] = astro_params_fid
@@ -102,14 +102,15 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     for param, value in astro_params_vary.items(): 
         
         _side_der = one_side_der.get(param, None)
+        _percentage = percentage.get(param, True)
         
         if _side_der is None :
-            vary_array = np.array([-100, 100])
+            vary_array = np.array([-100., 100.])
         else:
             if _side_der == '+': 
-                vary_array = np.array([+100])
+                vary_array = np.array([+100.])
             elif _side_der == '-':
-                vary_array = np.array([-100])
+                vary_array = np.array([-100.])
             else: 
                 ValueError("The arguments of one_side_param_derivative have to be '+' or '-'")
 
@@ -120,8 +121,8 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
         else : 
             q = q_scale/vary_array
 
-        if p_fid == 0.:
-            p = q
+        if _percentage is False:
+            p = 100.*q
         else:
             p = p_fid*(1+q)
             print('Parameter ' + str(param) + ' varied by ' + str(value) + ' percent of the fiducial')

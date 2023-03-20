@@ -11,126 +11,35 @@ from py21cmcast import power         as p21c_p
 from py21cmcast import tools         as p21c_tools
 from py21cmcast import experiments   as p21c_exp
 
+import warnings
+
+def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
+    _filename = 'py21cmcast/' + filename.split("/")[-1]
+    return ' %s:%s: %s (%s)\n' % (_filename, lineno, message, category.__name__)
+
+warnings.formatwarning = warning_on_one_line
+
 
 class Run:
 
-    def __init__(self, lightcone, z_bins, k_bins, logk, p: float = 0.): 
+    def __init__(self, 
+                 dir_path, 
+                 lightcone_name, 
+                 z_bins, 
+                 k_bins, 
+                 logk, 
+                 p: float = 0., 
+                 load = True, 
+                 save = True, 
+                 verbose = True, 
+                 **kwargs): 
         
-        self._z_bins    = z_bins
-        self._k_bins    = k_bins
-        self._logk      = logk
-        self._p         = p
-
-
-        # Get the power spectrum from the Lightcone
-        self._lightcone       = lightcone
-        self._lc_redshifts    = lightcone.lightcone_redshifts
-        self._chunk_indices   = [np.argmin(np.abs(self._lc_redshifts - z)) for z in z_bins]
-        self._z_arr, self._ps = p21c_p.compute_powerspectra_1D(lightcone, chunk_indices = self._chunk_indices, 
-                                                                n_psbins=self._k_bins.value, logk=logk, 
-                                                                remove_nans=False, vb=False)
-        
-        _lc_glob_redshifts = self._lightcone.node_redshifts
-        self._z_glob       = np.linspace(z_bins[0], z_bins[-1], 100)
-        
-
-        _global_signal = lightcone.global_quantities.get('brightness_temp', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
-        _xH_box        = lightcone.global_quantities.get('xH_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
-
-        self._global_signal = interpolate.interp1d(_lc_glob_redshifts, _global_signal)(self._z_glob)
-        self._xH_box        = interpolate.interp1d(_lc_glob_redshifts, _xH_box)(self._z_glob)
-        
-        _k_arr = np.array([data['k'] for data in self._ps])
-        assert np.any(np.diff(_k_arr, axis=0)[0]/_k_arr <= 1e-3)
-        self._k_arr = _k_arr[0]
-
-
-    @property
-    def power_spectrum(self):
-        return np.array([data['delta'] for data in self._ps])
-
-    @property
-    def ps_poisson_noise(self):
-        return np.array([data['err_delta'] for data in self._ps])
-    
-    @property
-    def global_signal(self):
-        return self._global_signal
-    
-    @property
-    def xH_box(self):
-        return self._xH_box
-    
-    @property
-    def z_glob(self):
-        return self._z_glob
-
-    @property
-    def z_bins(self):
-        return self._z_bins
-
-    @property
-    def k_bins(self): 
-        return self._k_bins
-
-    @property
-    def z_array(self):
-        return self._z_arr
-
-    @property
-    def k_array(self):
-        return self._k_arr
-
-    @property
-    def logk(self): 
-        return self._logk
-
-    @property
-    def chunk_indices(self):
-        return self._chunk_indices
-
-    @property
-    def p(self):
-        return self._p
-
-    ## Lighcone properties
-    @property
-    def astro_params(self):
-        return dict(self._lightcone.astro_params.self)
-
-    @property
-    def user_params(self):
-        return dict(self._lightcone.user_params.self)
-
-    @property
-    def flag_options(self):
-        return dict(self._lightcone.flag_options.self)
-
-    @property
-    def cosmo_params(self):
-        return dict(self._lightcone.cosmo_params.self)
-
-
-
-def compare_arrays(array_1, array_2, eps : float):
-    if len(array_1) != len(array_2):
-        return False
-    return np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps)
-
-
-
-class CombinedRuns:
-    """
-    ## Smart collection of the same runs with different random seeds
-    """
-
-    def __init__(self, dir_path, name, z_bins = None, k_bins = None, logk=False, p : float = 0, save=True, load=True, verbose = True, **kwargs) -> None:
-        
-        self._name            = name
         self._dir_path        = dir_path
+        self._name            = lightcone_name
         self._filename_data   = self._dir_path + '/Table_' + self._name + '.npz'    
         self._filename_params = self._dir_path + '/Param_' + self._name + '.pkl' 
-        self._verbose         = verbose
+
+        self._verbose = verbose
 
         if load is True : 
             _load_successfull = self._load()
@@ -143,74 +52,71 @@ class CombinedRuns:
                 if z_bins is not None:
                     if compare_arrays(self._z_bins, z_bins, 1e-5) is False:
                         _params_match = False
-                        raise ValueError("z-bins in input are different than the one used to precompute the tables")
+                        warnings.warn("z-bins in input are different than the one used to precompute the tables")
                 if k_bins is not None:
                     if compare_arrays(self._k_bins, k_bins, 1e-5) is False:
                         _params_match = False
-                        raise ValueError("z-bins in input are different than the one used to precompute the tables")
+                        warnings.warn("k-bins in input are different than the one used to precompute the tables")
 
                 if _params_match is True:
                     return None
+                else:
+                    print("recomputing the tables with the new bins")
 
             if (z_bins is None or k_bins is None) and _load_successfull is False:
                 raise ValueError("Need to pass z_bins and k_bins as inputs")
 
+        self._z_bins    = z_bins
+        self._k_bins    = k_bins
+        self._logk      = logk
+        self._p         = p
 
-        self._z_bins  = z_bins
-        self._k_bins  = k_bins
-        self._logk    = logk
-        self._p       = p
 
-        # fetch all the lightcone files that correspond to runs the same parameters but different seed
-        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_*" + self._name + ".h5")
-        
-        if len(_lightcone_file_name) > 1:
-            print("For " + self._name + ": grouping a total of " + str(len(_lightcone_file_name)) + " runs")
-        
-        # Create the array of runs
-        self._runs =  [Run(p21f.LightCone.read(file_name), self._z_bins, self._k_bins, logk, p) for file_name in _lightcone_file_name]
+        # Get the power spectrum from the Lightcone
+        self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
 
-        assert len(self._runs) > 0, "ERROR when searching for lightcones with a given name" 
+        self._astro_params = dict(self._lightcone.astro_params.self)
+        self._user_params  = dict(self._lightcone.user_params.self)
+        self._cosmo_params = dict(self._lightcone.cosmo_params.self)
+        self._flag_options = dict(self._lightcone.flag_options.self)
 
-        ## check that there is no problem and all z- and k- arrays have the same properties
-        for irun in range(1, len(self._runs)) :
+        # Compute the power spectrum and fetch global quantities
+        self._get_power_spectra()
+        self._get_global_quantities()
 
-            # check that all with the same q-value have the same bins 
-            assert compare_arrays(self._runs[0].k_array, self._runs[irun].k_array, 1e-5) 
-            assert compare_arrays(self._runs[0].z_array, self._runs[irun].z_array, 1e-5) 
-            assert compare_arrays(self._runs[0].k_bins,  self._runs[irun].k_bins,  1e-5) 
-            assert compare_arrays(self._runs[0].z_bins,  self._runs[irun].z_bins,  1e-5) 
-            
-            # check that all with the same q-value have the same astro_params
-            assert self._runs[0].astro_params  == self._runs[irun].astro_params
-            assert self._runs[0].user_params   == self._runs[irun].user_params
-            assert self._runs[0].flag_options  == self._runs[irun].flag_options
-            assert self._runs[0].cosmo_params  == self._runs[irun].cosmo_params
-
-        self._z_array = self._runs[0].z_array
-        self._k_array = self._runs[0].k_array
-        self._z_glob  = self._runs[0].z_glob
-
-        self._average_quantities()
-
+        # Compute the optical depth to reionization
         self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
 
         if save is True:
             self._save()
 
 
-    def _average_quantities(self):
+    def _get_power_spectra(self):
+
+        self._lc_redshifts        = self._lightcone.lightcone_redshifts
+        self._chunk_indices       = [np.argmin(np.abs(self._lc_redshifts - z)) for z in self._z_bins]
+        self._z_array, _data_arr  = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, 
+                                                                n_psbins=self._k_bins.value, logk=self._logk, 
+                                                                remove_nans=False, vb=False)
         
-        ## compute the average values and the spread 
-        self._power_spectrum    = np.average([run.power_spectrum for run in self._runs], axis=0)
-        self._ps_poisson_noise  = np.average([run.ps_poisson_noise for run in self._runs], axis=0)
-        self._ps_modeling_noise = np.std([run.power_spectrum for run in self._runs], axis=0)
-        self._global_signal     = np.average([run.global_signal for run in self._runs], axis=0)
-        self._xH_box            = np.average([run.xH_box for run in self._runs], axis=0)
-        self._astro_params      = self._runs[0].astro_params 
-        self._user_params       = self._runs[0].user_params
-        self._flag_options      = self._runs[0].flag_options
-        self._cosmo_params      = self._runs[0].cosmo_params
+        self._power_spectrum   = np.array([data['delta'] for data in _data_arr])
+        self._ps_poisson_noise = np.array([data['err_delta'] for data in _data_arr])
+
+        _k_array = np.array([data['k'] for data in _data_arr])
+        assert np.all(np.abs(np.diff(_k_array, axis=0)[0]/_k_array) <= 1e-3)
+        self._k_array = _k_array[0]
+
+
+    def _get_global_quantities(self):
+
+        _lc_glob_redshifts = self._lightcone.node_redshifts
+        self._z_glob       = np.linspace(self._z_bins[0], self._z_bins[-1], 100)
+      
+        _global_signal = self._lightcone.global_quantities.get('brightness_temp', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _xH_box        = self._lightcone.global_quantities.get('xH_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+
+        self._global_signal = interpolate.interp1d(_lc_glob_redshifts, _global_signal)(self._z_glob)
+        self._xH_box        = interpolate.interp1d(_lc_glob_redshifts, _xH_box)(self._z_glob)
 
 
     def _save(self):
@@ -224,7 +130,6 @@ class CombinedRuns:
         with open(self._filename_data, 'wb') as file: 
             np.savez(file, power_spectrum     = self.power_spectrum,
                             ps_poisson_noise  = self.ps_poisson_noise,
-                            ps_modeling_noise = self.ps_modeling_noise,
                             global_signal     = self.global_signal,
                             xH_box            = self.xH_box,
                             z_array           = self.z_array,
@@ -259,7 +164,6 @@ class CombinedRuns:
                 
                 self._power_spectrum    = data['power_spectrum']
                 self._ps_poisson_noise  = data['ps_poisson_noise']
-                self._ps_modeling_noise = data['ps_modeling_noise']
                 self._z_array           = data['z_array']
                 self._k_array           = data['k_array']
                 self._z_bins            = data['z_bins']
@@ -288,23 +192,35 @@ class CombinedRuns:
                 print("No existing data found for " + self._name)
             
             return False
-    
+        
 
-    @property
-    def tau_ion(self):
-        return self._tau_ion
+    def plot_power_spectrum(self, std = None, figname = None, plot=True, ps_modeling_noise=None) :  
+
+        error = self.ps_poisson_noise
+        if ps_modeling_noise is not None :
+            error = np.sqrt(self.ps_poisson_noise**2 + self.ps_modeling_noise**2)
+
+        fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, self.power_spectrum, 
+                                                func_err = error,
+                                                std = std, title=r'$\Delta_{21}^2 ~{\rm [mK^2]}$', 
+                                                xlim = [self._k_bins[0].value, self._k_bins[-1].value], xlog=self._logk, ylog=True)
+        
+        if plot is True : 
+
+            if figname is None:
+                figname = self._dir_path + "/power_spectrum.pdf"
+        
+            fig.savefig(figname, bbox_layout='tight')
+
+        return fig
 
     @property
     def power_spectrum(self):
         return self._power_spectrum
-    
+
     @property
     def ps_poisson_noise(self):
         return self._ps_poisson_noise
-
-    @property
-    def ps_modeling_noise(self):
-        return self._ps_modeling_noise
     
     @property
     def global_signal(self):
@@ -319,34 +235,38 @@ class CombinedRuns:
         return self._z_glob
 
     @property
-    def z_array(self):
-        return self._z_array
-
-    @property
-    def k_array(self): 
-        return self._k_array
-    
-    @property
     def z_bins(self):
         return self._z_bins
 
     @property
     def k_bins(self): 
         return self._k_bins
- 
+
+    @property
+    def z_array(self):
+        return self._z_array
+
+    @property
+    def k_array(self):
+        return self._k_array
+
     @property
     def logk(self): 
         return self._logk
 
     @property
+    def chunk_indices(self):
+        return self._chunk_indices
+
+    @property
     def p(self):
         return self._p
 
-    # lightcone properties
+    ## Lighcone properties
     @property
-    def astro_params(self): 
+    def astro_params(self):
         return self._astro_params
-    
+
     @property
     def user_params(self):
         return self._user_params
@@ -359,39 +279,49 @@ class CombinedRuns:
     def cosmo_params(self):
         return self._cosmo_params
 
+    @property
+    def tau_ion(self):
+        return self._tau_ion
 
 
-    def plot_power_spectrum(self, std = None, figname = None, plot=True) :  
-
-        fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, self.power_spectrum, 
-                                                func_err = np.sqrt(self.ps_poisson_noise**2 + self.ps_modeling_noise**2),
-                                                std = std, title=r'$\Delta_{21}^2 ~{\rm [mK^2]}$', 
-                                                xlim = [self._k_bins[0].value, self._k_bins[-1].value], xlog=self._logk, ylog=True)
-        
-        if plot is True : 
-
-            if figname is None:
-                figname = self._dir_path + "/power_spectrum.pdf"
-        
-            fig.savefig(figname, bbox_layout='tight')
-
-        return fig
-    
+def compare_arrays(array_1, array_2, eps : float):
+    if len(array_1) != len(array_2):
+        return False
+    return np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps)
 
 
 
 
-class Fiducial(CombinedRuns): 
+class Fiducial(Run): 
+    """
+    # Class to define a fiducial object
+    """
 
-    def __init__(self, dir_path, z_bins, k_bins, logk, observation = "", frac_noise = 0., **kwargs):
+    def __init__(self, dir_path, z_bins, k_bins, logk, observation = "", frac_noise = 0., rs = None, ps_modeling_noise = None, **kwargs):
+
 
         self._dir_path     = dir_path
-        super().__init__(self._dir_path, "FIDUCIAL", z_bins, k_bins, logk, **kwargs)
-    
+
+        # get the lightcones from the filenames
+        if rs is None:
+            _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5")
+        else:
+            _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5")
+
+        assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
+        
+        _file_name = _lightcone_file_name[0].split('/')[-1]
+        self._rs   = _file_name.split('_')[-2][2:]
+
+        super().__init__(self._dir_path, _file_name, z_bins, k_bins, logk, **kwargs)
+        
 
         self._frac_noise = frac_noise
+        
+        self._ps_modeling_noise  = ps_modeling_noise if (ps_modeling_noise is not None) else self._frac_noise * self._power_spectrum
         self._astro_params       = self._astro_params
         self._observation        = observation
+
         self.compute_sensitivity()
 
     
@@ -421,13 +351,27 @@ class Fiducial(CombinedRuns):
     @frac_noise.setter
     def frac_noise(self, value):
         if value != self._frac_noise:
-            print("Warning: frac noise has been changed, all related quantities should be recomputed")
-            self._frac_noise = value
+            print("Warning: frac noise and modeling noise have been changed, all related quantities should be recomputed")
+            self._frac_noise        = value
+            self._ps_modeling_noise = self._frac_noise * self._power_spectrum
 
     @property
     def ps_exp_noise(self):
         return np.array(self._ps_exp_noise)
     
+    @property
+    def ps_modeling_noise(self):
+        return self._ps_modeling_noise
+
+    @ps_modeling_noise.setter
+    def ps_modeling_noise(self, value):
+        if value != self._ps_modeling_noise:
+            print("Warning: modeling noise has been changed, all related quantities should be recomputed")
+            self._ps_modeling_noise = value
+    
+    @property
+    def rs(self):
+        return self._rs
 
     def compute_sensitivity(self):
 
@@ -479,12 +423,14 @@ class Fiducial(CombinedRuns):
     def plot_power_spectrum(self):
         super().plot_power_spectrum(std=self._ps_exp_noise, figname = self._dir_path + "/fiducial_power_spectrum.pdf")
 
+
     def plot_xH_box(self):
         fig = p21c_tools.plot_func(self.z_glob, self.xH_box,
                                     xlabel=r'$z$',
                                     ylabel=r'$x_{\rm H_{I}}$')
         fig.savefig(self._dir_path + '/fiducial_xH.pdf', bbox_inches='tight')
-    
+
+
     def plot_global_signal(self):
         fig = p21c_tools.plot_func(self.z_glob, self.global_signal, ylim=[-150, 50],
                                     xlabel=r'$z$',
@@ -520,14 +466,15 @@ class Parameter:
         else:
             self._tex_name = p21c_tools._PARAMS_PLOT.get('theta', None)['tex_name']
 
-        self._load           = kwargs.get('load', True)
+        self._load = kwargs.get('load', True)
 
         if name not in self._astro_params:
             ValueError("ERROR: the name does not corresponds to any varied parameters")
 
         # get the lightcones from the filenames
-        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_*" + self._name + self._extra_str + "_*.h5")
-    
+        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._extra_str + "_*.h5")
+
+        assert len(_lightcone_file_name) > 0, FileNotFoundError('No files found for the lightcone associated to' + self._name + 'variations')
 
         # get (from the filenames) the quantity by which the parameter has been varies from the fiducial
         self._p_value = []
@@ -553,7 +500,9 @@ class Parameter:
             print("Treating parameter " + self._name)
 
         # We get the lightcones and then create the corresponding runs objects
-        self._runs =  [CombinedRuns(self._dir_path, self._name + self._extra_str + '_{:.4e}'.format(p), self._z_bins, self._k_bins, 
+        self._runs =  [Run(self._dir_path, 
+                                    'Lightcone_rs' + str(self._fiducial.rs) + '_' + self._name + self._extra_str + '_{:.4e}'.format(p) + '.h5', 
+                                    self._z_bins, self._k_bins, 
                                     self._logk, p, **kwargs) for p in self._p_value]
 
         if verbose is True: 
@@ -743,12 +692,12 @@ class Parameter:
     def plot_power_spectra(self, **kwargs):
 
         _ps        = [self._fiducial.power_spectrum]
-        _ps_errors = [np.sqrt(self._fiducial.ps_poisson_noise**2 + self._fiducial.ps_modeling_noise**2)]
+        _ps_errors = [self._fiducial.ps_poisson_noise]
         _p_vals    = [0]
 
         for run in self._runs:
             _ps.append(run.power_spectrum)
-            _ps_errors.append(np.sqrt(run.ps_poisson_noise**2 + run.ps_modeling_noise**2))
+            _ps_errors.append(run.ps_poisson_noise)
             _p_vals.append(run.p)
 
         _order     = np.argsort(_p_vals)
@@ -819,3 +768,130 @@ def evaluate_fisher_matrix(parameters):
 
 
  
+
+
+
+class CombinedRuns:
+    """
+    ## Smart collection of the same runs with different random seeds
+    """
+
+    def __init__(self, dir_path, name, z_bins = None, k_bins = None, logk=False, p : float = 0, save=True, load=True, verbose = True, **kwargs) -> None:
+        
+        self._z_bins  = z_bins
+        self._k_bins  = k_bins
+        self._logk    = logk
+        self._p       = p
+
+        # fetch all the lightcone files that correspond to runs the same parameters but different seed
+        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_*" + self._name + ".h5")
+        
+        if len(_lightcone_file_name) > 1:
+            print("For " + self._name + ": grouping a total of " + str(len(_lightcone_file_name)) + " runs")
+        
+        # Create the array of runs
+        self._runs =  [Run(dir_path, file_name, self._z_bins, self._k_bins, logk, p) for file_name in _lightcone_file_name]
+
+        assert len(self._runs) > 0, "ERROR when searching for lightcones with a given name" 
+
+        ## check that there is no problem and all z- and k- arrays have the same properties
+        for irun in range(1, len(self._runs)) :
+
+            # check that all with the same q-value have the same bins 
+            assert compare_arrays(self._runs[0].k_array, self._runs[irun].k_array, 1e-5) 
+            assert compare_arrays(self._runs[0].z_array, self._runs[irun].z_array, 1e-5) 
+            assert compare_arrays(self._runs[0].k_bins,  self._runs[irun].k_bins,  1e-5) 
+            assert compare_arrays(self._runs[0].z_bins,  self._runs[irun].z_bins,  1e-5) 
+            
+            # check that all with the same q-value have the same astro_params
+            assert self._runs[0].astro_params  == self._runs[irun].astro_params
+            assert self._runs[0].user_params   == self._runs[irun].user_params
+            assert self._runs[0].flag_options  == self._runs[irun].flag_options
+            assert self._runs[0].cosmo_params  == self._runs[irun].cosmo_params
+
+        self._z_array = self._runs[0].z_array
+        self._k_array = self._runs[0].k_array
+        self._z_glob  = self._runs[0].z_glob
+
+        self._average_quantities()
+
+
+    def _average_quantities(self):
+        
+        ## compute the average values and the spread 
+        self._power_spectrum    = np.average([run.power_spectrum for run in self._runs], axis=0)
+        self._ps_poisson_noise  = np.average([run.ps_poisson_noise for run in self._runs], axis=0)
+        self._ps_modeling_noise = np.std([run.power_spectrum for run in self._runs], axis=0)
+        self._global_signal     = np.average([run.global_signal for run in self._runs], axis=0)
+        self._xH_box            = np.average([run.xH_box for run in self._runs], axis=0)
+        self._astro_params      = self._runs[0].astro_params 
+        self._user_params       = self._runs[0].user_params
+        self._flag_options      = self._runs[0].flag_options
+        self._cosmo_params      = self._runs[0].cosmo_params
+
+    @property
+    def power_spectrum(self):
+        return self._power_spectrum
+    
+    @property
+    def ps_poisson_noise(self):
+        return self._ps_poisson_noise
+
+    @property
+    def ps_modeling_noise(self):
+        return self._ps_modeling_noise
+    
+    @property
+    def global_signal(self):
+        return self._global_signal
+    
+    @property
+    def xH_box(self):
+        return self._xH_box
+    
+    @property
+    def z_glob(self):
+        return self._z_glob
+
+    @property
+    def z_array(self):
+        return self._z_array
+
+    @property
+    def k_array(self): 
+        return self._k_array
+    
+    @property
+    def z_bins(self):
+        return self._z_bins
+
+    @property
+    def k_bins(self): 
+        return self._k_bins
+ 
+    @property
+    def logk(self): 
+        return self._logk
+
+    @property
+    def p(self):
+        return self._p
+
+    # lightcone properties
+    @property
+    def astro_params(self): 
+        return self._astro_params
+    
+    @property
+    def user_params(self):
+        return self._user_params
+
+    @property
+    def flag_options(self):
+        return self._flag_options
+
+    @property
+    def cosmo_params(self):
+        return self._cosmo_params
+
+    

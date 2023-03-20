@@ -14,6 +14,7 @@ from .tools import (
     read_power_spectra,
     make_triangle_plot,
     plot_func_vs_z_and_k,
+    plot_func,
     display_matrix,
     load_uv_luminosity_functions,
 )
