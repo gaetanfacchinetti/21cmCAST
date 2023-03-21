@@ -36,8 +36,14 @@ class Run:
         
         self._dir_path        = dir_path
         self._name            = lightcone_name
-        self._filename_data   = self._dir_path + '/Table_' + self._name + '.npz'    
-        self._filename_params = self._dir_path + '/Param_' + self._name + '.pkl' 
+        self._filename_data   = self._dir_path + '/cache/Table_' + self._name + '.npz'    
+        self._filename_params = self._dir_path + '/cache/Param_' + self._name + '.pkl' 
+
+        # Create the database directory if it does not already exists
+        p21c_tools.make_directory(self._dir_path + "/cache", clean_existing_dir=False)
+        p21c_tools.make_directory(self._dir_path + "/power_spectra", clean_existing_dir=False)
+        p21c_tools.make_directory(self._dir_path + "/derivatives", clean_existing_dir=False)
+        p21c_tools.make_directory(self._dir_path + "/global_quantities", clean_existing_dir=False)
 
         self._verbose = verbose
 
@@ -208,7 +214,7 @@ class Run:
         if plot is True : 
 
             if figname is None:
-                figname = self._dir_path + "/power_spectrum.pdf"
+                figname = self._dir_path + "/power_spectra/power_spectrum.pdf"
         
             fig.savefig(figname, bbox_layout='tight')
 
@@ -297,12 +303,14 @@ class Fiducial(Run):
     # Class to define a fiducial object
     """
 
-    def __init__(self, dir_path, z_bins, k_bins, logk, observation = "", frac_noise = 0., rs = None, ps_modeling_noise = None, **kwargs):
+    def __init__(self, dir_path, z_bins, k_bins, logk, observation = "", frac_noise = 0., rs = None, ps_modeling_noise = None, verbose = False, **kwargs):
 
 
-        self._dir_path     = dir_path
+        self._dir_path             = dir_path
+        self._filename_exp_noise   = self._dir_path + '/cache/Table_exp_noise'
+        self._verbose              = verbose
 
-        # get the lightcones from the filenames
+        # get the lightcones filenames
         if rs is None:
             _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5")
         else:
@@ -313,7 +321,7 @@ class Fiducial(Run):
         _file_name = _lightcone_file_name[0].split('/')[-1]
         self._rs   = _file_name.split('_')[-2][2:]
 
-        super().__init__(self._dir_path, _file_name, z_bins, k_bins, logk, **kwargs)
+        super().__init__(self._dir_path, _file_name, z_bins, k_bins, logk, verbose = verbose, **kwargs)
         
 
         self._frac_noise = frac_noise
@@ -324,7 +332,49 @@ class Fiducial(Run):
 
         self.compute_sensitivity()
 
-    
+
+    def _save_ps_exp_noise(self):
+         
+         with open(self._filename_exp_noise + '_' + self._observation + '.npz', 'wb') as file: 
+            np.savez(file, ps_exp_noise       = self.ps_exp_noise,
+                            z_array           = self.z_array,
+                            k_array           = self.k_array,
+                            z_bins            = self.z_bins,
+                            k_bins            = self.k_bins,)
+            
+
+    def _load_ps_exp_noise(self):
+
+        data   = None
+
+        try:
+
+            with open(self._filename_exp_noise + '_' + self._observation + '.npz' , 'rb') as file: 
+                data = np.load(file)
+
+                _z_array           = data['z_array']
+                _k_array           = data['k_array']
+                _z_bins            = data['z_bins']
+                _k_bins            = data['k_bins']  / units.Mpc
+
+                # if the binning are compatibles then we can load the sensitivity
+                if compare_arrays(_z_array, self._z_array, 1e-3) \
+                    and compare_arrays(_k_array, self._k_array, 1e-3) \
+                    and compare_arrays(_z_bins, self._z_bins, 1e-3) \
+                    and compare_arrays(_k_bins, self._k_bins, 1e-3) :
+
+                    self._ps_exp_noise      = data['ps_exp_noise']
+                else:
+                    return False
+
+            return True
+
+        except FileNotFoundError:
+            if self._verbose is True:
+                print("No existing data found for " + self._observation + 'with this binning')
+
+            return False
+
     @property
     def dir_path(self):
         return self._dir_path
@@ -373,17 +423,26 @@ class Fiducial(Run):
     def rs(self):
         return self._rs
 
+
+
     def compute_sensitivity(self):
 
         _std = None
+        self._ps_exp_noise = None
 
-        if self._observation == 'HERA':
-            _std = [None] * len(self.z_array)
-            for iz, z in enumerate(self.z_array): 
-                _hera     = p21c_exp.define_HERA_observation(z)
-                _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array, self.power_spectrum[iz], _hera)
+        _load_succesfull = self._load_ps_exp_noise()
 
-        self._ps_exp_noise = _std
+        if _load_succesfull is False:
+
+            if self._observation == 'HERA':
+                _std = [None] * len(self.z_array)
+                for iz, z in enumerate(self.z_array): 
+                    _hera     = p21c_exp.define_HERA_observation(z)
+                    _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array, self.power_spectrum[iz], _hera)
+
+                self._ps_exp_noise = _std
+                self._save_ps_exp_noise()
+
 
 
     
@@ -401,7 +460,7 @@ class Fiducial(Run):
                     fig.gca().errorbar(m_uv[iz], l_uv[iz], yerr=sigma_l_uv[iz], linestyle='', capsize=2, elinewidth=0.5, label=r'${}$'.format(z))
 
             fig.gca().legend()
-            fig.savefig(self._dir_path + '/UV_liminosity_functions.pdf', bbox_inches='tight')
+            fig.savefig(self._dir_path + '/global_quantities/UV_lum_func_FIDUCIAL.pdf', bbox_inches='tight')
 
         ## The chi2 is given by a sum on the elements where z > 6 (as we cannot trust 21cmFAST below)
 
@@ -421,21 +480,21 @@ class Fiducial(Run):
     
 
     def plot_power_spectrum(self):
-        super().plot_power_spectrum(std=self._ps_exp_noise, figname = self._dir_path + "/fiducial_power_spectrum.pdf")
+        super().plot_power_spectrum(std=self._ps_exp_noise, figname = self._dir_path + "/power_spectra/power_spectrum_FIDUCIAL.pdf")
 
 
     def plot_xH_box(self):
         fig = p21c_tools.plot_func(self.z_glob, self.xH_box,
                                     xlabel=r'$z$',
                                     ylabel=r'$x_{\rm H_{I}}$')
-        fig.savefig(self._dir_path + '/fiducial_xH.pdf', bbox_inches='tight')
+        fig.savefig(self._dir_path + '/global_quantities/xH_FIDUCIAL.pdf', bbox_inches='tight')
 
 
     def plot_global_signal(self):
         fig = p21c_tools.plot_func(self.z_glob, self.global_signal, ylim=[-150, 50],
                                     xlabel=r'$z$',
                                     ylabel=r'$\overline{T_{\rm b}}~\rm [mK]$')
-        fig.savefig(self._dir_path + '/fiducial_global_signal.pdf', bbox_inches='tight')
+        fig.savefig(self._dir_path + '/global_quantities/global_signal_FIDUCIAL.pdf', bbox_inches='tight')
 
 
 
@@ -685,7 +744,7 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives_" + self._name + ".pdf")
+        fig.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._extra_str + ".pdf")
         return fig
 
 
@@ -709,7 +768,7 @@ class Parameter:
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
                                                 xlog=self._logk, ylog=True, istd = _order[0], **kwargs)
 
-        fig.savefig(self._dir_path + "/power_spectra_" + self.name + ".pdf")
+        fig.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._extra_str + ".pdf")
         return fig
 
 
@@ -724,7 +783,7 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{1}{\sigma}\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/weighted_derivatives_" + self._name + ".pdf")
+        fig.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._extra_str + ".pdf")
         return fig
 
 

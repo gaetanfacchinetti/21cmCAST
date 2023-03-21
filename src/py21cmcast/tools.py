@@ -44,7 +44,7 @@ import copy
 
 
 
-def make_directory(path: str, clean_existing_dir:bool = True):
+def make_directory(path: str, clean_existing_dir:bool = False):
     
     if not os.path.exists(path): 
         os.mkdir(path)
@@ -52,7 +52,6 @@ def make_directory(path: str, clean_existing_dir:bool = True):
         if clean_existing_dir is True:
             clean_directory(path)
         else:
-            print("The directory "  + path + " already exists")
             return True
 
     return False
