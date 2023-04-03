@@ -50,7 +50,7 @@ def define_HERA_observation(z):
 
 
 
-def extract_noise_from_fiducial(k, dsqr, observation) :
+def extract_noise_from_fiducial(k_in, dsqr_in, k_out, observation) :
     """
     Give the noise associated to power spectra delta_arr
 
@@ -70,16 +70,14 @@ def extract_noise_from_fiducial(k, dsqr, observation) :
     """
 
 
-    sensitivity       = p21s.PowerSpectrum(observation=observation, k_21 = k / units.Mpc, 
-                                            delta_21 = dsqr * (units.mK**2), 
+    sensitivity       = p21s.PowerSpectrum(observation=observation, k_21 = k_in / units.Mpc, 
+                                            delta_21 = dsqr_in * (units.mK**2), 
                                             foreground_model='moderate') 
     
     k_sens            = sensitivity.k1d.value * p21s.config.COSMO.h
     std_21cmSense     = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
 
-    #print(k, k_sens, std_21cmSense)
-
-    std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.inf)(k)
+    std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.inf)(k_out)
 
     return std
 

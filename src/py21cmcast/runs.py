@@ -219,8 +219,8 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     
     ####################### Running the lightcone ############################
 
-    lightcone_quantities = ("brightness_temp", )
-    global_quantities    = ("brightness_temp", "xH_box")
+    lightcone_quantities = ('brightness_temp', )
+    global_quantities    = ('brightness_temp', 'xH_box', 'x_e_box', 'Ts_box', 'Tk_box',)
 
     try: 
 

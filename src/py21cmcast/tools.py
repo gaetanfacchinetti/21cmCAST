@@ -273,8 +273,8 @@ _PARAMS_PLOT = {
     'L_X_MINI'          : {'tex_name' : r'\log_{10}\left[\frac{L_X^{\rm mini}}{\rm units}\right]', 'min': 40, 'max': 41},
     'M_TURN'            : {'tex_name' : r'\log_{10}\left[\frac{M_{\rm turn}}{{\rm M}_\odot}\right]', 'min': 7.6, 'max': 8.9, 'ticks' : []},
     'NU_X_THRESH'       : {'tex_name' : r'E_0~[\rm eV]', 'min': 300, 'max': 700, 'ticks' : []},
-    'DM_LOG10_LIFETIME' : {'tex_name' : r'\log_{\rm 10}\left[\frac{\tau_{\chi}}{\rm s}\right]', 'min': 25.6, 'max': 26.4, 'ticks' : []},
-    'DM_DECAY_RATE'     : {'tex_name' : r'\Gamma ~ [\rm s^{-1}]'},
+    'DM_LOG10_LIFETIME' : {'tex_name' : r'\log_{\rm 10}\left[\frac{\tau_{\chi}}{\rm s}\right]', 'min': 25.6, 'max': 26.4, 'ticks' : [], 'positive' : False},
+    'DM_DECAY_RATE'     : {'tex_name' : r'\Gamma ~ [\rm s^{-1}]', 'positive' : True, 'val' : 0},
     'DM_LOG10_MASS'     : {'tex_name' : r'\log_{10}[\frac{m_{\chi}}{\rm eV}]', 'min': 3, 'max': 11,  'ticks' : []},
     'DM_FHEAT_APPROX_PARAM_LOG10_F0' : {'tex_name' : r'\log_{10}[f_0]', 'min': -2, 'max': 1,  'ticks' : []},
     'DM_FHEAT_APPROX_PARAM_A'  : {'tex_name' : r'a', 'min': -2, 'max': 1,  'ticks' : []},
@@ -302,12 +302,6 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
     axs = [[None for j in range(ngrid)] for i in range(ngrid)]
 
 
-    ## set the parameter range to plot
-    min_val_arr  = [None] * len(name_params)
-    max_val_arr  = [None] * len(name_params)
-    display_arr  = [None] * len(name_params)
-    ticks_arr    = [None] * len(name_params)
-
     ['F_STAR10', 'F_STAR7_MINI', 'ALPHA_STAR', 'ALPHA_STAR_MINI',  't_STAR', 'F_ESC10', 'F_ESC7_MINI', 'ALPHA_ESC', 'L_X', 'L_X_MINI', 
                    'DM_LOG10_LIFETIME', 'DM_FHEAT_APPROX_PARAM_LOG10_F0', 'DM_FHEAT_APPROX_PARAM_A', 'DM_FHEAT_APPROX_PARAM_B', 
                    'LOG10_XION_at_Z_HEAT_MAX', 'LOG10_TK_at_Z_HEAT_MAX']
@@ -322,7 +316,7 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
             axs[j][i] = fig.add_subplot(gs[j:j+1, i:i+1])
 
             ## Information concertning this case
-            _default_info  = {'tex_name' : r'$\theta$', 'min' : None, 'max' : None, 'ticks' : []}
+            _default_info  = {'tex_name' : r'$\theta$', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
             
             _param_info_x  = _PARAMS_PLOT.get(name_params[i], _default_info)
             _param_info_y  = _PARAMS_PLOT.get(name_params[j], _default_info)
@@ -335,7 +329,16 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
             x_max = val_x + 4*np.sqrt(cov_matrix[i, i])
             y_min = val_y - 4*np.sqrt(cov_matrix[j, j])
             y_max = val_y + 4*np.sqrt(cov_matrix[j, j])
-            
+
+            if _param_info_x.get('positive', False) is True:
+                x_min = np.max([x_min, 0])
+            if _param_info_y.get('positive', False) is True:
+                y_min = np.max([y_min, 0])
+
+            if _param_info_x.get('val', None) is not None:
+                val_x = _param_info_x.get('val', None)
+            if _param_info_y.get('val', None) is not None:
+                val_y = _param_info_y.get('val', None)
 
             ##############
             # Setting the plot
@@ -388,9 +391,8 @@ def make_triangle_plot(covariance_matrix, name_params, fiducial_params) :
 
             if i == j :
 
-
                 axs[i][i].set_ylim([0, 1.2])
-                axs[i][i].set_title(r'${} \pm {:.2}$'.format(val_x, np.sqrt(cov_matrix[i, i])), fontsize=10)
+                axs[i][i].set_title(r'${}$'.format(val_x) + f'\n' + r'$\pm{:.3}$'.format(np.sqrt(cov_matrix[i, i])), fontsize=10)
     
                 # Plot the gaussian approximation in that panel
                 sigma     = np.sqrt(cov_matrix[i, i])
@@ -501,7 +503,7 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
 
                 # Plot the standard deviation bars if standard deviation is given
                 if std is not None : 
-                    axs[i][j].fill_between(k, func[istd][iz] - std[iz], func[istd][iz] + std[iz], step='mid', alpha = 0.2, color='blue')
+                    axs[i][j].fill_between(k, func[istd][iz] - std[iz], func[istd][iz] + std[iz], step='mid', alpha = 0.2, color=color_list[istd])
                 
                 
                 xlim = kwargs.get('xlim', None)
@@ -571,6 +573,7 @@ def plot_func(x, func, **kwargs) :
     ylog   = kwargs.get('ylog', False)
     xlabel = kwargs.get('xlabel', r'$x$')
     ylabel = kwargs.get('ylabel', r'$y$')
+    rax    = kwargs.get('rax', False)
     color  = kwargs.get('color', plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
     ax.set_xlim(xlim)
@@ -588,8 +591,10 @@ def plot_func(x, func, **kwargs) :
     for ifunc, f in enumerate(func):
         ax.plot(x[ifunc], f, color=color[ifunc])
 
-    return fig
-
+    if rax is False:
+        return fig
+    else:
+        return fig, ax
 
 
 def display_matrix(matrix, names = None):

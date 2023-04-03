@@ -41,6 +41,28 @@ from . import tools as tls
 
 
 
+def deltak_zB(z, B) :
+    
+    # Definition of the 21 cm frequency (same as in 21cmSense)
+    f21 = 1420.40575177 * units.MHz
+
+    return 2*np.pi * f21 * cosmo.H(z) / constants.c / (1+z)**2 / B * 1000 * units.m / units.km
+
+
+def generate_k_bins(z, k_min, k_max, B, logk):
+    
+    dk = deltak_zB(z, B) 
+    _k_min = dk
+
+    if _k_min < k_min :
+        _k_min = k_min
+
+    if logk is False:
+        return np.arange(_k_min.value, k_max.value, dk.value) * k_min.unit
+    else:
+        ValueError("logarithmic k-bins not implemented yet")
+
+
 def define_grid_modes_redshifts(z_min: float, B: float, k_min = 0.1 / units.Mpc, k_max = 1 / units.Mpc, z_max: float = 19, logk=False) : 
     """
     ## Defines a grid of modes and redshift on which to define the noise and on which the Fisher matrix will be evaluated
@@ -57,9 +79,6 @@ def define_grid_modes_redshifts(z_min: float, B: float, k_min = 0.1 / units.Mpc,
     # Definition of the 21 cm frequency (same as in 21cmSense)
     f21 = 1420.40575177 * units.MHz
 
-    def deltak_zB(z, B) : 
-        return 2*np.pi * f21 * cosmo.H(z) / constants.c / (1+z)**2 / B * 1000 * units.m / units.km
-
     def generate_z_bins(z_min, z_max, B):
         fmax = f21/(1+z_min)
         fmin = f21/(1+z_max)
@@ -68,25 +87,12 @@ def define_grid_modes_redshifts(z_min: float, B: float, k_min = 0.1 / units.Mpc,
         z_bins    = (f21/f_bins).value - 1
         z_centers = (f21/f_centers).value -1
         return z_bins, z_centers
-    
-    def generate_k_bins(z_min, k_min, k_max, B):
-        
-        dk = deltak_zB(z_min, B) 
-        _k_min = dk
-
-        if _k_min < k_min :
-            _k_min = k_min
-
-        if logk is False:
-            return np.arange(_k_min.value, k_max.value, dk.value) * k_min.unit
-        else:
-            ValueError("logarithmic k-bins not implemented yet")
 
     # Get the redshift bin edges and centers
     z_bins, _ = generate_z_bins(z_min, z_max, B)
     
     # Get the k-bins edges
-    k_bins = generate_k_bins(z_min, k_min, k_max, B)
+    k_bins = generate_k_bins(z_min, k_min, k_max, B, logk)
 
     return z_bins, k_bins
 

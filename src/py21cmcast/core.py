@@ -116,14 +116,19 @@ class Run:
     def _get_global_quantities(self):
 
         _lc_glob_redshifts = self._lightcone.node_redshifts
-        self._z_glob       = np.linspace(self._z_bins[0], self._z_bins[-1], 100)
-      
+        self._z_glob       = np.linspace(_lc_glob_redshifts[-1], _lc_glob_redshifts[0], 100)
+  
         _global_signal = self._lightcone.global_quantities.get('brightness_temp', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _xH_box        = self._lightcone.global_quantities.get('xH_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _x_e_box       = self._lightcone.global_quantities.get('x_e_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _Ts_box        = self._lightcone.global_quantities.get('Ts_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _Tk_box        = self._lightcone.global_quantities.get('Tk_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
 
         self._global_signal = interpolate.interp1d(_lc_glob_redshifts, _global_signal)(self._z_glob)
         self._xH_box        = interpolate.interp1d(_lc_glob_redshifts, _xH_box)(self._z_glob)
-
+        self._x_e_box       = interpolate.interp1d(_lc_glob_redshifts, _x_e_box)(self._z_glob)
+        self._Ts_box        = interpolate.interp1d(_lc_glob_redshifts, _Ts_box)(self._z_glob)
+        self._Tk_box        = interpolate.interp1d(_lc_glob_redshifts, _Tk_box)(self._z_glob)
 
     def _save(self):
         """
@@ -137,7 +142,11 @@ class Run:
             np.savez(file, power_spectrum     = self.power_spectrum,
                             ps_poisson_noise  = self.ps_poisson_noise,
                             global_signal     = self.global_signal,
+                            chunk_indices     = self.chunk_indices,
                             xH_box            = self.xH_box,
+                            x_e_box           = self.x_e_box,
+                            Ts_box            = self.Ts_box,
+                            Tk_box            = self.Tk_box,
                             z_array           = self.z_array,
                             k_array           = self.k_array,
                             z_bins            = self.z_bins,
@@ -170,12 +179,16 @@ class Run:
                 
                 self._power_spectrum    = data['power_spectrum']
                 self._ps_poisson_noise  = data['ps_poisson_noise']
+                self._chunk_indices     = data['chunk_indices']
                 self._z_array           = data['z_array']
                 self._k_array           = data['k_array']
                 self._z_bins            = data['z_bins']
                 self._k_bins            = data['k_bins']  / units.Mpc
                 self._global_signal     = data['global_signal']
                 self._xH_box            = data['xH_box']
+                self._x_e_box           = data.get('x_e_box', None)
+                self._Ts_box            = data.get('Ts_box', None)
+                self._Tk_box            = data.get('Tk_box', None)
                 self._z_glob            = data['z_glob']
 
             with open(self._filename_params, 'rb') as file:
@@ -190,6 +203,7 @@ class Run:
 
             ## Recompute tau_ion from the properties read here
             self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+        
 
             return True
 
@@ -235,6 +249,18 @@ class Run:
     @property
     def xH_box(self):
         return self._xH_box
+    
+    @property
+    def x_e_box(self):
+        return self._x_e_box
+    
+    @property
+    def Ts_box(self):
+        return self._Ts_box
+
+    @property
+    def Tk_box(self):
+        return self._Tk_box
     
     @property
     def z_glob(self):
@@ -311,45 +337,45 @@ class Fiducial(Run):
         self._verbose              = verbose
 
         # get the lightcones filenames
-        if rs is None:
-            _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5")
-        else:
-            _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5")
+        _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
+        _lightcone_file_name = glob.glob(_str_file_name)
 
         assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
         
         _file_name = _lightcone_file_name[0].split('/')[-1]
         self._rs   = _file_name.split('_')[-2][2:]
 
+        # Initialise the parent object
         super().__init__(self._dir_path, _file_name, z_bins, k_bins, logk, verbose = verbose, **kwargs)
         
-
-        self._frac_noise = frac_noise
-        
+        # Getting the noise associated to the fiducial
+        self._frac_noise         = frac_noise
         self._ps_modeling_noise  = ps_modeling_noise if (ps_modeling_noise is not None) else self._frac_noise * self._power_spectrum
         self._astro_params       = self._astro_params
         self._observation        = observation
 
-        self.compute_sensitivity()
+        self._is_ps_sens_computed = False
+
+        self.compute_sensitivity(self._observation)
 
 
-    def _save_ps_exp_noise(self):
+    def _save_ps_exp_noise(self, observation):
          
-         with open(self._filename_exp_noise + '_' + self._observation + '.npz', 'wb') as file: 
-            np.savez(file, ps_exp_noise       = self.ps_exp_noise,
-                            z_array           = self.z_array,
-                            k_array           = self.k_array,
-                            z_bins            = self.z_bins,
-                            k_bins            = self.k_bins,)
+         with open(self._filename_exp_noise + '_' + observation + '.npz', 'wb') as file: 
+            np.savez(file, ps_exp_noise         = self.ps_exp_noise,
+                            z_array             = self.z_array,
+                            k_array             = self.k_array,
+                            z_bins              = self.z_bins,
+                            k_bins              = self.k_bins)
             
 
-    def _load_ps_exp_noise(self):
+    def _load_ps_exp_noise(self, observation):
 
         data   = None
 
         try:
 
-            with open(self._filename_exp_noise + '_' + self._observation + '.npz' , 'rb') as file: 
+            with open(self._filename_exp_noise + '_' + observation + '.npz' , 'rb') as file: 
                 data = np.load(file)
 
                 _z_array           = data['z_array']
@@ -391,8 +417,8 @@ class Fiducial(Run):
     def observation(self, value):
         _old_value = self._observation
         if _old_value != value : 
+            self.compute_sensitivity(value)
             self._observation = value
-            self.compute_sensitivity()
 
     @property
     def frac_noise(self):
@@ -422,26 +448,58 @@ class Fiducial(Run):
     @property
     def rs(self):
         return self._rs
+    
+    @property
+    def k_array_sens(self):
+        return self._k_array_sens
+    
+    @property
+    def power_spectrum_sens(self):
+        return self._power_spectrum_sens
+    
+
+    def compute_power_spectrum_sensitivity(self):
+
+        # Get the Lightcone quantity
+        self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+
+        # In order to compute the sensitivity we need the full range of z and k possible
+        # We recompute a second power spectra for the sensitivity on a broader range
+        # We use the same redshift chunks but let the array of mode free (and here logarithmically spaced by default)
+        # This makes the code longer but it is necessary to have everything well defined and no numerical problems
+        _z_array_sens, _data_arr   = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, remove_nans=False, vb=False)
+
+        self._k_array_sens         = np.array([data['k'] for data in _data_arr])
+        self._power_spectrum_sens  = np.array([data['delta'] for data in _data_arr])
+     
+        assert compare_arrays(_z_array_sens, self._z_array, 1e-3), 'Problem of redshift compatibilities with the PS computed for the sensitivity'
+
+        self._is_ps_sens_computed = True
 
 
-
-    def compute_sensitivity(self):
+    def compute_sensitivity(self, observation):
 
         _std = None
         self._ps_exp_noise = None
 
-        _load_succesfull = self._load_ps_exp_noise()
+        _load_succesfull = self._load_ps_exp_noise(observation)
 
         if _load_succesfull is False:
 
-            if self._observation == 'HERA':
+            if self._is_ps_sens_computed is False and observation == 'HERA':
+                self.compute_power_spectrum_sensitivity()
+
+            if observation == 'HERA':
                 _std = [None] * len(self.z_array)
                 for iz, z in enumerate(self.z_array): 
                     _hera     = p21c_exp.define_HERA_observation(z)
-                    _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array, self.power_spectrum[iz], _hera)
+                    _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array_sens[iz], self.power_spectrum_sens[iz], self.k_array, _hera)
 
                 self._ps_exp_noise = _std
-                self._save_ps_exp_noise()
+                self._save_ps_exp_noise(observation)
+
+        # everything went well and we reached the end
+        return True
 
 
 
@@ -556,7 +614,10 @@ class Parameter:
             print(self._name  + " has been varied with p = " + str(self._p_value))
             print("Loading the lightcones and computing the power spectra")
         else :
-            print("Treating parameter " + self._name)
+            if self._extra_str != '':
+                print("Treating parameter " + self._name + ' (' + self._extra_str[1:] + ')')
+            else:
+                print("Treating parameter " + self._name)
 
         # We get the lightcones and then create the corresponding runs objects
         self._runs =  [Run(self._dir_path, 
@@ -752,7 +813,7 @@ class Parameter:
 
         _ps        = [self._fiducial.power_spectrum]
         _ps_errors = [self._fiducial.ps_poisson_noise]
-        _p_vals    = [0]
+        _p_vals    = [self._fiducial.astro_params[self._name]]
 
         for run in self._runs:
             _ps.append(run.power_spectrum)
