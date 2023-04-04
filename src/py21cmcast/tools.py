@@ -542,6 +542,36 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
     return fig
 
 
+def prepare_plot(**kwargs) :
+
+    """ 
+        Function that plots simple functions of one variable on the same graph
+    """
+    
+    fig = plt.figure(figsize = (5,4))
+    ax = fig.gca()
+
+    xlim   = kwargs.get('xlim', None)
+    ylim   = kwargs.get('ylim', None)
+    xlog   = kwargs.get('xlog', False)
+    ylog   = kwargs.get('ylog', False)
+    xlabel = kwargs.get('xlabel', r'$x$')
+    ylabel = kwargs.get('ylabel', r'$y$')
+
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+    ax.set_xlabel('{}'.format(xlabel))
+    ax.set_ylabel('{}'.format(ylabel))
+
+    if xlog is True:
+        ax.set_xscale('log')
+    if ylog is True:
+        ax.set_yscale('log')
+
+    return fig, ax
+
 
 def plot_func(x, func, **kwargs) :
 
@@ -557,36 +587,15 @@ def plot_func(x, func, **kwargs) :
     """
 
         
+    fig, ax = prepare_plot(**kwargs)
+    rax     = kwargs.get('rax', False)
+    color   = kwargs.get('color', plt.rcParams['axes.prop_cycle'].by_key()['color'])
+    
     if isinstance(func[0], (int, float, np.float64, np.float32)) : 
         func = [func]
 
     if isinstance(x[0], (int, float, np.float64, np.float32)) : 
         x = [x]*len(func)
-
-    
-    fig = plt.figure(figsize = (5,4))
-    ax = fig.gca()
-
-    xlim   = kwargs.get('xlim', [np.min([val[0] for val in x]), np.max([val[-1] for val in x])])
-    ylim   = kwargs.get('ylim', None)
-    xlog   = kwargs.get('xlog', False)
-    ylog   = kwargs.get('ylog', False)
-    xlabel = kwargs.get('xlabel', r'$x$')
-    ylabel = kwargs.get('ylabel', r'$y$')
-    rax    = kwargs.get('rax', False)
-    color  = kwargs.get('color', plt.rcParams['axes.prop_cycle'].by_key()['color'])
-
-    ax.set_xlim(xlim)
-    if ylim is not None:
-        ax.set_ylim(ylim)
-    ax.set_xlabel('{}'.format(xlabel))
-    ax.set_ylabel('{}'.format(ylabel))
-
-    if xlog is True:
-        ax.set_xscale('log')
-    if ylog is True:
-        ax.set_yscale('log')
-
 
     for ifunc, f in enumerate(func):
         ax.plot(x[ifunc], f, color=color[ifunc])
@@ -595,6 +604,7 @@ def plot_func(x, func, **kwargs) :
         return fig
     else:
         return fig, ax
+
 
 
 def display_matrix(matrix, names = None):

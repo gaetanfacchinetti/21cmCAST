@@ -572,26 +572,40 @@ class Parameter:
         self._k_bins         = self._fiducial.k_bins
         self._logk           = self._fiducial.logk
 
-        self._extra_str      =  kwargs.get('extra_str', '')
-        if self._extra_str != '':
-            self._extra_str = '_' + self._extra_str
+        self._verbose        = verbose
 
-        __params_plot        = p21c_tools._PARAMS_PLOT.get(self._name, None)
+        # Additional parameters to specify the value of the parameter
+        self._values         =  kwargs.get('values', None)
+        self._add_name       =  kwargs.get('add_name', '')
         
-        if __params_plot is not None:
-            self._tex_name = __params_plot['tex_name']
-        else:
-            self._tex_name = p21c_tools._PARAMS_PLOT.get('theta', None)['tex_name']
-
+        if self._add_name != '':
+            self._add_name = '_' + self._add_name
+            
+        __params_plot        = p21c_tools._PARAMS_PLOT.get(self._name, None)
+        self._tex_name = __params_plot['tex_name'] if (__params_plot is not None) else p21c_tools._PARAMS_PLOT.get('theta', None)['tex_name']
+       
         self._load = kwargs.get('load', True)
 
         if name not in self._astro_params:
             ValueError("ERROR: the name does not corresponds to any varied parameters")
 
+        ############################################################
         # get the lightcones from the filenames
-        _lightcone_file_name = glob.glob(self._dir_path + "/Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._extra_str + "_*.h5")
+        file_name = self._dir_path + "/Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
+        
+        if self._values is None :
+            _lightcone_file_name = glob.glob(file_name + "*" + ".h5")
+        else: 
+            if not isinstance(self._values, list):
+                self._values = [self._values]
+            _lval = [None] * len(self._values)
+            for ival, val in enumerate(self._values):
+                _lval[ival] = glob.glob(file_name + '{:.4e}'.format(val) + ".h5")
+            _lightcone_file_name = [lval[0] for lval in _lval]        
 
         assert len(_lightcone_file_name) > 0, FileNotFoundError('No files found for the lightcone associated to' + self._name + 'variations')
+        ############################################################
+
 
         # get (from the filenames) the quantity by which the parameter has been varies from the fiducial
         self._p_value = []
@@ -614,14 +628,14 @@ class Parameter:
             print(self._name  + " has been varied with p = " + str(self._p_value))
             print("Loading the lightcones and computing the power spectra")
         else :
-            if self._extra_str != '':
-                print("Treating parameter " + self._name + ' (' + self._extra_str[1:] + ')')
+            if self._add_name != '':
+                print("Treating parameter " + self._name + ' (' + self._add_name[1:] + ')')
             else:
                 print("Treating parameter " + self._name)
 
         # We get the lightcones and then create the corresponding runs objects
         self._runs =  [Run(self._dir_path, 
-                                    'Lightcone_rs' + str(self._fiducial.rs) + '_' + self._name + self._extra_str + '_{:.4e}'.format(p) + '.h5', 
+                                    'Lightcone_rs' + str(self._fiducial.rs) + '_' + self._name + self._add_name + '_{:.4e}'.format(p) + '.h5', 
                                     self._z_bins, self._k_bins, 
                                     self._logk, p, **kwargs) for p in self._p_value]
 
@@ -788,7 +802,7 @@ class Parameter:
                 _force_to_one_side = True
             der = self._ps_derivative.get('right', None)
 
-        if _force_to_one_side is True:
+        if _force_to_one_side is True and self._verbose is True:
             print("Weighted derivative computed from the one_sided derivative")
 
         # We sum (quadratically) the two errors
@@ -805,7 +819,7 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._extra_str + ".pdf")
+        fig.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._add_name + ".pdf")
         return fig
 
 
@@ -829,7 +843,7 @@ class Parameter:
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
                                                 xlog=self._logk, ylog=True, istd = _order[0], **kwargs)
 
-        fig.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._extra_str + ".pdf")
+        fig.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._add_name + ".pdf")
         return fig
 
 
@@ -844,7 +858,7 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{1}{\sigma}\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._extra_str + ".pdf")
+        fig.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._add_name + ".pdf")
         return fig
 
 
