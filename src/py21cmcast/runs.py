@@ -145,6 +145,73 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
 
 
 
+def make_config_one_varying_param(config_file: str, param_name: str, values, **kwargs):
+
+    config = configparser.ConfigParser(delimiters=':')
+    config.optionxform = str
+
+    config.read(config_file)
+
+    name            = config.get('run', 'name')
+    output_dir      = config.get('run', 'output_dir')
+    cache_dir       = config.get('run', 'cache_dir')
+
+    extra_params = {}
+    
+    try: 
+        extra_params['min_redshift']  = float(config.get('extra_params','min_redshift'))
+    except configparser.NoOptionError: 
+        print("Warning: min_redshift set to 5 by default")
+        extra_params['min_redshift']  = 5
+
+    try:
+        extra_params['max_redshift']    = float(config.get('extra_params','max_redshift'))
+    except configparser.NoOptionError:
+        print("Warning: max_redshift set to 35 by default")
+        extra_params['max_redshift']  = 35   
+
+    try:
+        extra_params['coarsen_factor']  = int(config.get('extra_params', 'coarsen_factor'))
+    except configparser.NoOptionError:
+        print("Warning: coarsen factor undifined")
+
+    user_params       = p21c_tools.read_config_params(config.items('user_params'))
+    flag_options      = p21c_tools.read_config_params(config.items('flag_options'))
+    astro_params_fid  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False)
+    
+    # Make the directory to store the outputs and everything
+    output_run_dir = output_dir + "/" + name.upper() + "/"
+
+    mod_astro_params = kwargs.get('mod_astro_params', None)
+    mod_flag_options = kwargs.get('mod_flag_options', None)
+    add_file_name    = kwargs.get('add_file_name', '')
+
+    if add_file_name != '':
+        add_file_name = add_file_name + '_' 
+
+    if mod_astro_params is not None:
+        for param in mod_astro_params.keys():
+            if not param in astro_params_fid:
+                raise KeyError('This parameter is not primarly defined in the config file')
+            astro_params_fid[param] = mod_astro_params[param]
+
+    if mod_flag_options is not None:
+        for flag in mod_flag_options.keys():
+            if not flag in flag_options:
+                raise KeyError('This flag_option is not primarly defined in the config file')
+            flag_options[flag] = mod_flag_options[flag]
+
+    astro_params = astro_params_fid
+
+    if not param_name in astro_params_fid:
+        raise KeyError('This parameter is not primarly defined in the config file')
+    
+    for ival, val in enumerate(values):
+        astro_params[param_name] = val
+        filename = output_run_dir + '/Config_' + param_name + '_' + add_file_name + '{:.4e}'.format(val) + ".config"
+        key      = param_name + '_' + add_file_name + '{:.4e}'.format(val)
+        #print(filename, astro_params, flag_options, key)
+        p21c_tools.write_config_params(filename, name, cache_dir, extra_params, user_params, flag_options, astro_params, key)
 
 
 
