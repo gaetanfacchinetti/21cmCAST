@@ -1,3 +1,22 @@
+##################################################################################
+# This file is part of 21cmCAST.
+#
+# Copyright (c) 2022, Gaétan Facchinetti
+#
+# 21cmCAST is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation, either version 3 of the License, or any 
+# later version. 21cmCAST is distributed in the hope that it will be useful, 
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU 
+# General Public License along with 21cmCAST. 
+# If not, see <https://www.gnu.org/licenses/>.
+##################################################################################
+
+
 import py21cmsense as p21s
 import numpy       as np
 

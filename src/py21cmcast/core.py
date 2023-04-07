@@ -1,3 +1,48 @@
+##################################################################################
+# This file is part of 21cmCAST.
+#
+# Copyright (c) 2023, Gaétan Facchinetti
+#
+# 21cmCAST is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation, either version 3 of the License, or any 
+# later version. 21cmCAST is distributed in the hope that it will be useful, 
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU 
+# General Public License along with 21cmCAST. 
+# If not, see <https://www.gnu.org/licenses/>.
+#
+# -------------------------------------------------------------------------------
+#
+# Parts of this code have been copied and modified 
+# from https://github.com/charlottenosam/21cmfish
+# 
+# - MIT License
+# -
+# - Copyright (c) 2019, Charlotte Mason
+# - 
+# - Permission is hereby granted, free of charge, to any person obtaining a copy
+# - of this software and associated documentation files (the "Software"), to deal
+# - in the Software without restriction, including without limitation the rights
+# - to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# - copies of the Software, and to permit persons to whom the Software is
+# - furnished to do so, subject to the following conditions:
+# - 
+# - The above copyright notice and this permission notice shall be included in all
+# - copies or substantial portions of the Software.
+# - 
+# - THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# - IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# - FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# - AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# - LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# - OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# - SOFTWARE.
+##################################################################################
+
 import glob
 
 import numpy as np
@@ -20,19 +65,73 @@ def warning_on_one_line(message, category, filename, lineno, file=None, line=Non
 warnings.formatwarning = warning_on_one_line
 
 
+
+def compare_arrays(array_1 : np.ndarray, array_2 : np.ndarray, eps : float):
+    """
+    ## Compare arrays to a certain precision
+
+    Parameters
+    ----------
+    array_1 : np.ndarray
+        First array to compare
+    array_1 : np.ndarray
+        Second array to compare
+    eps : float
+        Relative precision asked for the comparision
+
+    Returns:
+    --------
+    bool
+        True if arrays are equal to the precision eps, False otherwise
+    """
+
+    if len(array_1) != len(array_2):
+        return False
+    
+    return np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps)
+    
+
+
 class Run:
 
-    def __init__(self, 
-                 dir_path, 
-                 lightcone_name, 
-                 z_bins, 
-                 k_bins, 
-                 logk, 
-                 p: float = 0., 
-                 load = True, 
-                 save = True, 
-                 verbose = True, 
-                 **kwargs): 
+    """
+    # Class to define and analyse one run (and its associated lightcone)
+
+    Fetch/Compute and store derived quantities such as global quantities
+    or the power_spectrum of the brightness temperature.
+    """
+
+    def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list, k_bins : list, 
+                 logk : bool, p : float = 0., load : bool = True, save : bool = True, 
+                 verbose : bool  = True, **kwargs) -> None: 
+        """
+        Parameters
+        ----------
+        dir_path : str
+            Path to the directory where the lightcone is saved
+        lightcone_name : str
+            Name of the lightcone file
+        z_bins : list
+            Array of redshift bin edges
+        k_bins : list
+            Array of mode bin edges
+        logk : bool
+            Indicates that the k mode edges are logarithmically distributed
+        p : float, optional
+            Associated value of the parameter associated to the run
+        load : bool, optional
+            When True, first search for a cached precomputed tables of
+            the quantities derived in the class (power_spectrum, noise, etc.)
+            The cached tables have to be compatible with k_bins and z_bins
+            (i.e. preomputed for the same arrays z_bins and k_bins)
+            Default is True
+        save : bool, optional
+            When True, save the derived quantities in a cached table
+            Default is True
+        verbose : bool, optional
+            When true, outputs information for the user
+            Default is True
+        """
         
         self._dir_path        = dir_path
         self._name            = lightcone_name
@@ -316,25 +415,68 @@ class Run:
         return self._tau_ion
 
 
-def compare_arrays(array_1, array_2, eps : float):
-    if len(array_1) != len(array_2):
-        return False
-    return np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps)
-
 
 
 
 class Fiducial(Run): 
     """
-    # Class to define a fiducial object
+    # Class to define the Fiducial run
     """
 
-    def __init__(self, dir_path, z_bins, k_bins, logk, observation = "", frac_noise = 0., rs = None, ps_modeling_noise = None, verbose = False, **kwargs):
+    def __init__(self, dir_path : str, z_bins : list, k_bins : list, logk : bool,
+                observation : str = "", frac_noise : float = 0., rs : int = None, 
+                ps_modeling_noise : np.ndarray = None, verbose : bool = False, **kwargs) -> None:
 
+        """
+        Parameters
+        ----------
+        dir_path : str
+            Path to the directory where the FIDUCIAL lightcone is saved
+        z_bins : list
+            Array of redshift bin edges
+        k_bins : list
+            Array of mode bin edges
+        logk : bool
+            Indicates that the k mode edges are logarithmically distributed
+        observation : str, optional
+            Name of the observation to evaluate the constraints. 
+            For now the only working possibility is 'HERA'
+            TO DO: allow it to be the name of a file where to fetch the noise directly
+            Default is a void string '' (i.e. no observation set)
+        frac_noise : float, optional
+            Percentage level of modeling noise to add to the power spectrum
+            Default is 0
+        rs : int, optional
+            Value of the random seed used in 21cmFAST to compute the FIDUCIAL
+            Default is None
+        ps_modeling_noise : np.ndarray, optional
+            Overrides frac_noise by giving the modelign noise in a 2D table depending
+            on the redshift bin and the mode bin (of the same size as the power_spectrum).
+            Default is None
+        verbose : bool, optional
+            When true, outputs information for the user
+            Default is True
+
+        kwargs
+        ------
+        load : bool, optional
+            When True, first search for a cached precomputed tables of
+            the quantities derived in the class (power_spectrum, noise, etc.)
+            The cached tables have to be compatible with k_bins and z_bins
+            (i.e. preomputed for the same arrays z_bins and k_bins)
+            Default is True
+        save : bool, optional
+            When True, save the derived quantities in a cached table
+            Default is True
+   
+        """
 
         self._dir_path             = dir_path
         self._filename_exp_noise   = self._dir_path + '/cache/Table_exp_noise'
         self._verbose              = verbose
+
+        self._do_save = kwargs.get('save', True)
+        self._do_load = kwargs.get('load', True)
 
         # get the lightcones filenames
         _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
@@ -482,7 +624,7 @@ class Fiducial(Run):
         _std = None
         self._ps_exp_noise = None
 
-        _load_succesfull = self._load_ps_exp_noise(observation)
+        _load_succesfull = self._load_ps_exp_noise(observation) if (self._do_load is True) else False
 
         if _load_succesfull is False:
 
@@ -496,7 +638,9 @@ class Fiducial(Run):
                     _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array_sens[iz], self.power_spectrum_sens[iz], self.k_array, _hera)
 
                 self._ps_exp_noise = _std
-                self._save_ps_exp_noise(observation)
+                
+                if self._do_save is True:
+                    self._save_ps_exp_noise(observation)
 
         # everything went well and we reached the end
         return True

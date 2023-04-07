@@ -19,6 +19,7 @@ from .tools import (
     display_matrix,
     load_uv_luminosity_functions,
     prepare_plot,
+    prepare_2subplots,
 )
 
 from .power import (

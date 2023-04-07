@@ -1,31 +1,46 @@
 ##################################################################################
-# MIT Licence
-# 
-# Copyright (c) 2022, Gaétan Facchinetti
+# This file is part of 21cmCAST.
 #
-# This code has been taken and modified from https://github.com/charlottenosam/21cmfish
+# Copyright (c) 2023, Gaétan Facchinetti
+#
+# 21cmCAST is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License as published by 
+# the Free Software Foundation, either version 3 of the License, or any 
+# later version. 21cmCAST is distributed in the hope that it will be useful, 
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU 
+# General Public License along with 21cmCAST. 
+# If not, see <https://www.gnu.org/licenses/>.
+#
+# -------------------------------------------------------------------------------
+#
+# Parts of this code have been copied and modified 
+# from https://github.com/charlottenosam/21cmfish
 # 
-# # MIT License
-# #
-# # Copyright (c) 2019, Charlotte Mason
-# # 
-# # Permission is hereby granted, free of charge, to any person obtaining a copy
-# # of this software and associated documentation files (the "Software"), to deal
-# # in the Software without restriction, including without limitation the rights
-# # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# # copies of the Software, and to permit persons to whom the Software is
-# # furnished to do so, subject to the following conditions:
-# # 
-# # The above copyright notice and this permission notice shall be included in all
-# # copies or substantial portions of the Software.
-# # 
-# # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# # SOFTWARE.
+# - MIT License
+# -
+# - Copyright (c) 2019, Charlotte Mason
+# - 
+# - Permission is hereby granted, free of charge, to any person obtaining a copy
+# - of this software and associated documentation files (the "Software"), to deal
+# - in the Software without restriction, including without limitation the rights
+# - to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# - copies of the Software, and to permit persons to whom the Software is
+# - furnished to do so, subject to the following conditions:
+# - 
+# - The above copyright notice and this permission notice shall be included in all
+# - copies or substantial portions of the Software.
+# - 
+# - THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# - IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# - FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# - AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# - LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# - OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# - SOFTWARE.
 ##################################################################################
 
 
@@ -73,9 +88,6 @@ def clean_directory(path: str):
         
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
-
-
-
 
 
 def read_config_params(config_items, int_type = True):
@@ -571,6 +583,48 @@ def prepare_plot(**kwargs) :
         ax.set_yscale('log')
 
     return fig, ax
+
+
+
+def prepare_2subplots(gridspec_kw = None, **kwargs) :
+
+    """ 
+        Function that plots simple functions of one variable on the same graph
+    """
+    
+    fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw=gridspec_kw, sharex=True, figsize=(5,4), facecolor="White")
+
+    xlim     = kwargs.get('xlim', None)
+    ylim_1   = kwargs.get('ylim_1', None)
+    ylim_2   = kwargs.get('ylim_2', None)
+    xlog     = kwargs.get('xlog', False)
+    ylog_1   = kwargs.get('ylog_1', False)
+    ylog_2   = kwargs.get('ylog_2', False)
+    xlabel   = kwargs.get('xlabel', r'$x$')
+    ylabel_1 = kwargs.get('ylabel_1', r'$y$')
+    ylabel_2 = kwargs.get('ylabel_2', r'$y$')
+
+    if xlim is not None:
+        ax1.set_xlim(xlim)
+    if ylim_1 is not None:
+        ax1.set_ylim(ylim_1)
+    if ylim_2 is not None:
+        ax2.set_ylim(ylim_2)
+
+    ax2.set_xlabel('{}'.format(xlabel))
+    ax1.set_ylabel('{}'.format(ylabel_1))
+    ax2.set_ylabel('{}'.format(ylabel_2))
+
+    if xlog is True:
+        ax1.set_xscale('log')
+    if ylog_1 is True:
+        ax1.set_yscale('log')
+    if ylog_2 is True:
+        ax2.set_yscale('log')
+
+    return fig, (ax1, ax2)
+
+
 
 
 def plot_func(x, func, **kwargs) :

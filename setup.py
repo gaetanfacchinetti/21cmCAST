@@ -8,7 +8,7 @@ setuptools.setup(
     version="1.0.0",
     author="<Gaetan Facchinetti>",
     author_email="<gaetanfacc@gmail.com>",
-    description="<Template Setup.py package>",
+    description="<Fisher forecasts with 21cm experiments>",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="<https://github.com/gaetanfacchinetti/21cmCAST>",
