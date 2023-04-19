@@ -20,6 +20,7 @@ from .tools import (
     load_uv_luminosity_functions,
     prepare_plot,
     prepare_2subplots,
+    prepare_triangle_plot,
 )
 
 from .power import (

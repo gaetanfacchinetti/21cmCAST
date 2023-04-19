@@ -101,8 +101,8 @@ class Run:
     or the power_spectrum of the brightness temperature.
     """
 
-    def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list, k_bins : list, 
-                 logk : bool, p : float = 0., load : bool = True, save : bool = True, 
+    def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list = None, k_bins : list = None, 
+                 logk : bool = False, p : float = 0., load : bool = True, save : bool = True, 
                  verbose : bool  = True, **kwargs) -> None: 
         """
         Parameters
@@ -171,29 +171,32 @@ class Run:
             if (z_bins is None or k_bins is None) and _load_successfull is False:
                 raise ValueError("Need to pass z_bins and k_bins as inputs")
 
-        self._z_bins    = z_bins
-        self._k_bins    = k_bins
-        self._logk      = logk
-        self._p         = p
 
+        if load is False or _load_successfull is False :
 
-        # Get the power spectrum from the Lightcone
-        self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+            self._z_bins    = z_bins
+            self._k_bins    = k_bins
+            self._logk      = logk
+            self._p         = p
 
-        self._astro_params = dict(self._lightcone.astro_params.self)
-        self._user_params  = dict(self._lightcone.user_params.self)
-        self._cosmo_params = dict(self._lightcone.cosmo_params.self)
-        self._flag_options = dict(self._lightcone.flag_options.self)
+            
+            # Get the power spectrum from the Lightcone
+            self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
 
-        # Compute the power spectrum and fetch global quantities
-        self._get_power_spectra()
-        self._get_global_quantities()
+            self._astro_params = dict(self._lightcone.astro_params.self)
+            self._user_params  = dict(self._lightcone.user_params.self)
+            self._cosmo_params = dict(self._lightcone.cosmo_params.self)
+            self._flag_options = dict(self._lightcone.flag_options.self)
 
-        # Compute the optical depth to reionization
-        self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+            # Compute the power spectrum and fetch global quantities
+            self._get_power_spectra()
+            self._get_global_quantities()
 
-        if save is True:
-            self._save()
+            # Compute the optical depth to reionization
+            self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+
+            if save is True:
+                self._save()
 
 
     def _get_power_spectra(self):
@@ -289,6 +292,8 @@ class Run:
                 self._Ts_box            = data.get('Ts_box', None)
                 self._Tk_box            = data.get('Tk_box', None)
                 self._z_glob            = data['z_glob']
+
+               
 
             with open(self._filename_params, 'rb') as file:
                 params = pickle.load(file)
@@ -479,12 +484,19 @@ class Fiducial(Run):
         self._do_load = kwargs.get('load', True)
 
         # get the lightcones filenames
-        _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
-        _lightcone_file_name = glob.glob(_str_file_name)
+        if self._do_load is False:
+            # if we do not load, one has to find a lightcone for the fiducial
+            _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
+            _lightcone_file_name = glob.glob(_str_file_name)
+            _file_name = _lightcone_file_name[0].split('/')[-1] 
+        else:
+            # Here we look in the cache folder
+            _str_file_name = self._dir_path + "/cache/Table_Lightcone_rs*_FIDUCIAL.h5.npz" if (rs is None) else self._dir_path + "/cache/Table_Lightcone_rs" + str(rs) + "_FIDUCIAL.h5.npz"
+            _lightcone_file_name = glob.glob(_str_file_name)
+            _file_name = (_lightcone_file_name[0].split('/')[-1])[6:-4] # Remove the dir_path and 'Table_' ... '.npz'
 
         assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
         
-        _file_name = _lightcone_file_name[0].split('/')[-1]
         self._rs   = _file_name.split('_')[-2][2:]
 
         # Initialise the parent object
@@ -734,22 +746,44 @@ class Parameter:
             ValueError("ERROR: the name does not corresponds to any varied parameters")
 
         ############################################################
-        # get the lightcones from the filenames
-        file_name = self._dir_path + "/Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
-        
-        if self._values is None :
-            _lightcone_file_name = glob.glob(file_name + "*" + ".h5")
-        else: 
-            if not isinstance(self._values, list):
-                self._values = [self._values]
-            _lval = [None] * len(self._values)
-            for ival, val in enumerate(self._values):
-                _lval[ival] = glob.glob(file_name + '{:.4e}'.format(val) + ".h5")
-            _lightcone_file_name = [lval[0] for lval in _lval]        
+        # get the lightcones / saved cached values from the filenames
+        if self._load is False:
+            
+            _file_name = self._dir_path + "/Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
+            if self._values is None :
+                _lightcone_file_name = glob.glob(_file_name + "[0-9\-]*" + ".h5")
+            else: 
+                
+                if not isinstance(self._values, list):
+                    self._values = [self._values]
+                _lval = [None] * len(self._values)
+                
+                for ival, val in enumerate(self._values):
+                    _lval[ival] = glob.glob(_file_name + '{:.4e}'.format(val) + ".h5")
+                    assert len(_lval[0]) > 0,  FileNotFoundError(f'No files found for the lightcone associated to ' + self._name + self._add_name + f' variations for value: ' + '{:.4e}'.format(val))
+                
+                _lightcone_file_name = [lval[0] for lval in _lval]        
+        else:
+             
+            _file_name = self._dir_path + "/cache/Table_Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
+            
+            if self._values is None :
+                _lightcone_file_name = glob.glob(_file_name + "[0-9\-]*" + ".h5.npz")
+                _lightcone_file_name = [fname[:-4] for fname in _lightcone_file_name] 
+            else: 
+                
+                if not isinstance(self._values, list):
+                    self._values = [self._values]
+                _lval = [None] * len(self._values)
+                
+                for ival, val in enumerate(self._values):
+                    _lval[ival] = glob.glob(_file_name + '{:.4e}'.format(val) + ".h5.npz")
+                    assert len(_lval[0]) > 0,  FileNotFoundError(f'No files found for the lightcone associated to ' + self._name + self._add_name + f' variations for value: ' + '{:.4e}'.format(val))
+                
+                _lightcone_file_name = [lval[0][:-4] for lval in _lval] 
 
-        assert len(_lightcone_file_name) > 0, FileNotFoundError('No files found for the lightcone associated to' + self._name + 'variations')
+        assert len(_lightcone_file_name) > 0,  FileNotFoundError(f'No files found for the lightcone associated to ' + str(self._name) + f' variations')
         ############################################################
-
 
         # get (from the filenames) the quantity by which the parameter has been varies from the fiducial
         self._p_value = []
@@ -1008,7 +1042,6 @@ class Parameter:
 
 
 
-
 def evaluate_fisher_matrix(parameters):
     """
     ## Fisher matrix evaluator
@@ -1044,8 +1077,6 @@ def evaluate_fisher_matrix(parameters):
 
     
 
-
- 
 
 
 

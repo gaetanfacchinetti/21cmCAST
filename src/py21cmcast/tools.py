@@ -296,128 +296,191 @@ _PARAMS_PLOT = {
     }
 
 
-def make_triangle_plot(covariance_matrix, name_params, fiducial_params) : 
+def make_triangle_plot(covariance_matrix, name_params, fiducial_params, **kwargs) : 
 
     #####################################
     ## Choose the data we want to look at
-    cov_matrix      = covariance_matrix
-    fiducial_params = copy.deepcopy(fiducial_params)
     name_params     = name_params
-    ngrid           = len(name_params)
 
+
+    if not isinstance(name_params, list):
+        name_params = [name_params]
+    
+    if not isinstance(fiducial_params, list):
+        fiducial_params[fiducial_params]
+
+    if len(covariance_matrix.shape) == 2:
+        covariance_matrix = [covariance_matrix]
+        all_name_params = name_params
+    else:
+        # Define all name_params
+        all_name_params = []
+        for name in name_params:
+            all_name_params += name
+        all_name_params = set(all_name_params)   
+
+
+    params_to_plot = kwargs.get('params_to_plot', all_name_params) 
+
+
+    # add the fiducial values in the infos
+    val_min = {}
+    val_max = {}
+
+    covariance_dict = [{}]*len(covariance_matrix)
+
+
+    _default_info  = {'tex_name' : r'\theta', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
+
+    color = plt.rcParams['axes.prop_cycle'].by_key()['color']     
+    color = kwargs.get('color', color)
+
+    if not isinstance(color, list):
+        color = [color]
+
+    for icov, cov in enumerate(covariance_matrix):
+
+        for i, namei in enumerate(name_params[icov]):
+
+            val = fiducial_params[icov][namei]                   
+
+            _param_info  = _PARAMS_PLOT.get(namei, _default_info)
+            if _param_info.get('val', None) is not None:
+                val = _param_info.get('val', None)
+
+            _sigma = np.sqrt(cov[i, i])
+    
+            val_min[namei] = np.min([val - 4*_sigma, val_min.get(namei, val)])
+            val_max[namei] = np.max([val + 4*_sigma, val_max.get(namei, val)])
+
+            if _param_info.get('positive', False) is True:
+                val_min[namei] = np.max([val_min[namei], 0])
+            
+            for j, namej in enumerate(name_params[icov]):
+                covariance_dict[icov][namei][namej] = cov[i, j]
+
+    print(covariance_dict)
+    fig, axs = prepare_triangle_plot(params_to_plot, val_min, val_max)
+
+    #####################################
+    ## Go through all the possible cases and corresponding parameters
+    for icov, cov in enumerate(covariance_dict):
+        fill_triangle_plot(cov, name_params[icov], fiducial_params[icov], axs, color=color[icov])
+
+    axs[0][0].set_yticks([]) 
+ 
+    return fig
+
+
+def prepare_triangle_plot(params_to_plot, val_min, val_max):
+    
+    ngrid = len(params_to_plot)
+    
     #####################################
     ##  Prepare the triangle plot
     fig = plt.figure(constrained_layout=False, figsize=(1.2*ngrid, 1.2*ngrid))
     fig.subplots_adjust(wspace=0.05, hspace=0.05)
 
     gs = GridSpec(ngrid, ngrid, figure=fig)
-    axs = [[None for j in range(ngrid)] for i in range(ngrid)]
-
-
-    ['F_STAR10', 'F_STAR7_MINI', 'ALPHA_STAR', 'ALPHA_STAR_MINI',  't_STAR', 'F_ESC10', 'F_ESC7_MINI', 'ALPHA_ESC', 'L_X', 'L_X_MINI', 
-                   'DM_LOG10_LIFETIME', 'DM_FHEAT_APPROX_PARAM_LOG10_F0', 'DM_FHEAT_APPROX_PARAM_A', 'DM_FHEAT_APPROX_PARAM_B', 
-                   'LOG10_XION_at_Z_HEAT_MAX', 'LOG10_TK_at_Z_HEAT_MAX']
+    axs = dict(dict())
     
 
-    #####################################
-    ## Go through all the possible cases and corresponding parameters
-    for j in range(ngrid) : 
+    for j, namej in enumerate(params_to_plot) : 
+        for i, namei in enumerate(params_to_plot): 
+            
+            if i < j+1:
+
+                ## Here i represents the x axis while j goes along the y axis
+                axs[namej][namei] = fig.add_subplot(gs[j:j+1, i:i+1])
+
+                ## Information concertning this case
+                _default_info  = {'tex_name' : r'\theta', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
+                
+                _param_info_x  = _PARAMS_PLOT.get(namei, _default_info)
+                _param_info_y  = _PARAMS_PLOT.get(namej, _default_info)
+
+                x_min = val_min[namei]
+                x_max = val_max[namei]
+                y_min = val_min[namej]
+                y_max = val_max[namej]
+
+                axs[j][i].set_xlim([x_min, x_max])
+
+                if i != j :     
+                    axs[namej][namei].set_ylim([y_min, y_max])
+
+                if i == j :
+                    axs[namei][namei].set_ylim([0, 1.2])
+
+
+                ##############
+                # Setting the plot
+
+                # we remove the ticks if necessary for some parts of this case
+                if j < ngrid -1 :
+                    axs[namej][namei].xaxis.set_ticklabels([])
+                if i > 0 : 
+                    axs[namej][namei].yaxis.set_ticklabels([])
+
+                if j == ngrid -1 :
+                    axs[namej][namei].set_xlabel(r'${}$'.format(_param_info_x.get('tex_name', r'$\theta$')))
+                    x_ticks = _param_info_x.get('ticks', [])
+                    if x_ticks != [] :
+                        axs[namej][namei].set_xticks(_param_info_x.get('ticks', []))
+                    axs[namej][namei].tick_params(axis='x', labelsize=8)
+                    for tick in axs[namej][namei].get_xticklabels():
+                        tick.set_rotation(55)
+
+                if i == 0 and j > 0:
+                    axs[namej][namei].set_ylabel(r'${}$'.format(_param_info_y.get('tex_name', r'$\theta$')))
+                    y_ticks = _param_info_y.get('ticks', [])
+                    if y_ticks != [] :
+                        axs[namej][namei].set_yticks(_param_info_y.get('ticks', []))
+                    axs[namej][namei].tick_params(axis='y', labelsize=8)
+                    for tick in axs[namej][namei].get_yticklabels():
+                        tick.set_rotation(55)
+           
+    return fig, axs
+
+
+def fill_triangle_plot(covariance_matrix, name_params, fiducial_params, axs, **kwargs):
+    
+    color = kwargs.get('color', None)
+
+    for j in range(len(name_params)) : 
         for i in range(0, j+1) :
 
-            ## Here i represents the x axis while j goes along the y axis
-            axs[j][i] = fig.add_subplot(gs[j:j+1, i:i+1])
-
-            ## Information concertning this case
-            _default_info  = {'tex_name' : r'$\theta$', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
-            
-            _param_info_x  = _PARAMS_PLOT.get(name_params[i], _default_info)
-            _param_info_y  = _PARAMS_PLOT.get(name_params[j], _default_info)
-
-            # add the fiducial values in the infos
-            val_x = fiducial_params[name_params[i]]     
-            val_y = fiducial_params[name_params[j]]                 
-    
-            x_min = val_x - 4*np.sqrt(cov_matrix[i, i])
-            x_max = val_x + 4*np.sqrt(cov_matrix[i, i])
-            y_min = val_y - 4*np.sqrt(cov_matrix[j, j])
-            y_max = val_y + 4*np.sqrt(cov_matrix[j, j])
-
-            if _param_info_x.get('positive', False) is True:
-                x_min = np.max([x_min, 0])
-            if _param_info_y.get('positive', False) is True:
-                y_min = np.max([y_min, 0])
-
-            if _param_info_x.get('val', None) is not None:
-                val_x = _param_info_x.get('val', None)
-            if _param_info_y.get('val', None) is not None:
-                val_y = _param_info_y.get('val', None)
-
             ##############
-            # Setting the plot
-
-            # we remove the ticks if necessary for some parts of this case
-            if j < ngrid -1 :
-                axs[j][i].xaxis.set_ticklabels([])
-            if i > 0 : 
-                axs[j][i].yaxis.set_ticklabels([])
-
-            if j == ngrid -1 :
-                axs[j][i].set_xlabel(r'${}$'.format(_param_info_x.get('tex_name', r'$\theta$')))
-                x_ticks = _param_info_x.get('ticks', [])
-                if x_ticks != [] :
-                    axs[j][i].set_xticks(_param_info_x.get('ticks', []))
-                axs[j][i].tick_params(axis='x', labelsize=8)
-                for tick in axs[j][i].get_xticklabels():
-                    tick.set_rotation(55)
-
-            if i == 0 and j > 0:
-                axs[j][i].set_ylabel(r'${}$'.format(_param_info_y.get('tex_name', r'$\theta$')))
-                y_ticks = _param_info_y.get('ticks', [])
-                if y_ticks != [] :
-                    axs[j][i].set_yticks(_param_info_y.get('ticks', []))
-                axs[j][i].tick_params(axis='y', labelsize=8)
-                for tick in axs[j][i].get_yticklabels():
-                    tick.set_rotation(55)
-           
-
-            axs[j][i].set_xlim([x_min, x_max])
-            ##############
+            val_x = fiducial_params[name_params[i]]  
+            val_y = fiducial_params[name_params[j]]  
 
             ## Make the plots now
             if i != j : 
-                
-                axs[j][i].set_ylim([y_min, y_max])
 
                 # Countour plot for the scatter
                 sub_cov = np.zeros((2, 2))
-                sub_cov[0, 0] = cov_matrix[i, i]
-                sub_cov[0, 1] = cov_matrix[i, j]
-                sub_cov[1, 0] = cov_matrix[j, i]
-                sub_cov[1, 1] = cov_matrix[j, j]
+                sub_cov[0, 0] = covariance_matrix[i, i]
+                sub_cov[0, 1] = covariance_matrix[i, j]
+                sub_cov[1, 0] = covariance_matrix[j, i]
+                sub_cov[1, 1] = covariance_matrix[j, j]
 
                 #ellipse_x, ellipse_y = ellipse_from_covariance(sub_cov, [val_x, val_y])
                 #axs[j][i].plot(ellipse_x, ellipse_y, linewidth=0.5, color='blue')
 
-                confidence_ellipse(sub_cov, val_x, val_y, axs[j][i],  n_std=2, facecolor='dodgerblue', alpha=0.4)
-                confidence_ellipse(sub_cov, val_x, val_y, axs[j][i],  n_std=1, facecolor='dodgerblue', alpha=0.8)
+                confidence_ellipse(sub_cov, val_x, val_y, axs[j][i],  n_std=2, facecolor=color, alpha=0.4)
+                confidence_ellipse(sub_cov, val_x, val_y, axs[j][i],  n_std=1, facecolor=color, alpha=0.8)
 
             if i == j :
 
                 axs[i][i].set_ylim([0, 1.2])
-                axs[i][i].set_title(r'${}$'.format(val_x) + f'\n' + r'$\pm{:.3}$'.format(np.sqrt(cov_matrix[i, i])), fontsize=10)
+                axs[i][i].set_title(r'${}$'.format(val_x) + f'\n' + r'$\pm{:.3}$'.format(np.sqrt(covariance_matrix[i, i])), fontsize=10)
     
                 # Plot the gaussian approximation in that panel
-                sigma     = np.sqrt(cov_matrix[i, i])
+                sigma     = np.sqrt(covariance_matrix[i, i])
                 val_arr   = np.linspace(val_x-5*sigma, val_x+5*sigma, 100)
                 gaussian  = exp(-(val_arr - val_x)**2/2./sigma**2)
 
-                axs[i][i].plot(val_arr, gaussian, color='dodgerblue')
-    
-
-    axs[0][0].set_yticks([])  
-
-    return fig
-
+                axs[i][i].plot(val_arr, gaussian, color=color)
 
 
 def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float = 0, **kwargs) :
