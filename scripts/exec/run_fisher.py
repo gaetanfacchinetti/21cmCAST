@@ -34,7 +34,7 @@ while j < n_runs and i < n_runs_max:
         random_seed = None
 
     # Run the lightcone with the given seed
-    lightcone, run_id = p21c.run_lightcone_from_config(config_file, n_omp, random_seed)
+    lightcone, run_id = p21c.run_lightcone_from_config(config_file, n_omp, random_seed, heating_rate_output = 'eps_heat.txt')
 
     if lightcone is not None:
 

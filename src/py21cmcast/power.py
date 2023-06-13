@@ -104,12 +104,12 @@ def define_grid_modes_redshifts(z_min: float, B: float, k_min = 0.1 / units.Mpc,
         return z_bins, z_centers
 
     # Get the redshift bin edges and centers
-    z_bins, _ = generate_z_bins(z_min, z_max, B)
+    z_bins, z_centers = generate_z_bins(z_min, z_max, B)
     
     # Get the k-bins edges
     k_bins = generate_k_bins(z_min, k_min, k_max, B, logk)
 
-    return z_bins, k_bins
+    return z_bins, z_centers, k_bins
 
 
 

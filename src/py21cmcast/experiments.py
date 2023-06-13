@@ -42,15 +42,12 @@ def define_HERA_observation(z):
         dl=12.12 * units.m        # separation between rows
     )
 
-    hera = []
-
-
     beam = p21s.beam.GaussianBeam(
         frequency = 1420.40575177 * units.MHz / (1+z),  # just a reference frequency
         dish_size = 14 * units.m
     )
 
-    hera = p21s.Observatory(
+    hera_observatory = p21s.Observatory(
         antpos = hera_layout,
         beam = beam,
         latitude = 0.536189 * units.radian,
@@ -58,7 +55,7 @@ def define_HERA_observation(z):
     )
 
     observation = p21s.Observation(
-        observatory   = hera,
+        observatory   = hera_observatory,
         n_channels    = 80, 
         bandwidth     = 8 * units.MHz,
         time_per_day  = 6 * units.hour,   # Number of hours of observation per day

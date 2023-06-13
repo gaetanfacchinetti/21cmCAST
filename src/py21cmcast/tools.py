@@ -296,78 +296,63 @@ _PARAMS_PLOT = {
     }
 
 
-def make_triangle_plot(covariance_matrix, name_params, fiducial_params, **kwargs) : 
+def make_triangle_plot(covariance, fiducial_params, **kwargs) : 
 
     #####################################
     ## Choose the data we want to look at
-    name_params     = name_params
-
-
-    if not isinstance(name_params, list):
-        name_params = [name_params]
     
     if not isinstance(fiducial_params, list):
         fiducial_params[fiducial_params]
 
-    if len(covariance_matrix.shape) == 2:
-        covariance_matrix = [covariance_matrix]
-        all_name_params = name_params
+    if not isinstance(covariance, list):
+        all_name_params = list(covariance.keys())
+        covariance  = [covariance]  
     else:
         # Define all name_params
         all_name_params = []
-        for name in name_params:
+        for name in [list(cov.keys()) for cov in covariance]:
             all_name_params += name
-        all_name_params = set(all_name_params)   
-
+        all_name_params = list(set(all_name_params))  
 
     params_to_plot = kwargs.get('params_to_plot', all_name_params) 
-
 
     # add the fiducial values in the infos
     val_min = {}
     val_max = {}
 
-    covariance_dict = [{}]*len(covariance_matrix)
-
-
+    
     _default_info  = {'tex_name' : r'\theta', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
 
     color = plt.rcParams['axes.prop_cycle'].by_key()['color']     
     color = kwargs.get('color', color)
+    alpha = kwargs.get('alpha', [0.8]*len(covariance))
 
     if not isinstance(color, list):
         color = [color]
 
-    for icov, cov in enumerate(covariance_matrix):
+    for i_cov, cov in enumerate(covariance):
+        for i_name in covariance[i_cov].keys():
 
-        for i, namei in enumerate(name_params[icov]):
+            val = fiducial_params[i_cov][i_name]                   
 
-            val = fiducial_params[icov][namei]                   
-
-            _param_info  = _PARAMS_PLOT.get(namei, _default_info)
+            _param_info  = _PARAMS_PLOT.get(i_name, _default_info)
             if _param_info.get('val', None) is not None:
                 val = _param_info.get('val', None)
 
-            _sigma = np.sqrt(cov[i, i])
+            _sigma = np.sqrt(cov[i_name][i_name])
     
-            val_min[namei] = np.min([val - 4*_sigma, val_min.get(namei, val)])
-            val_max[namei] = np.max([val + 4*_sigma, val_max.get(namei, val)])
+            val_min[i_name] = np.min([val - 3.5*_sigma, val_min.get(i_name, val)])
+            val_max[i_name] = np.max([val + 3.5*_sigma, val_max.get(i_name, val)])
 
             if _param_info.get('positive', False) is True:
-                val_min[namei] = np.max([val_min[namei], 0])
+                val_min[i_name] = np.max([val_min[i_name], 0])
             
-            for j, namej in enumerate(name_params[icov]):
-                covariance_dict[icov][namei][namej] = cov[i, j]
-
-    print(covariance_dict)
+    
     fig, axs = prepare_triangle_plot(params_to_plot, val_min, val_max)
+    for i_cov, cov in enumerate(covariance):
+        fill_triangle_plot(cov, fiducial_params[i_cov], axs, color=color[i_cov], alpha = alpha[i_cov])
 
-    #####################################
-    ## Go through all the possible cases and corresponding parameters
-    for icov, cov in enumerate(covariance_dict):
-        fill_triangle_plot(cov, name_params[icov], fiducial_params[icov], axs, color=color[icov])
-
-    axs[0][0].set_yticks([]) 
+    axs[params_to_plot[0]][params_to_plot[0]].set_yticks([]) 
  
     return fig
 
@@ -382,35 +367,34 @@ def prepare_triangle_plot(params_to_plot, val_min, val_max):
     fig.subplots_adjust(wspace=0.05, hspace=0.05)
 
     gs = GridSpec(ngrid, ngrid, figure=fig)
-    axs = dict(dict())
+    axs = {param : {} for param in params_to_plot}
     
-
-    for j, namej in enumerate(params_to_plot) : 
-        for i, namei in enumerate(params_to_plot): 
+    for j, j_name in enumerate(params_to_plot) : 
+        for i, i_name in enumerate(params_to_plot): 
             
             if i < j+1:
 
                 ## Here i represents the x axis while j goes along the y axis
-                axs[namej][namei] = fig.add_subplot(gs[j:j+1, i:i+1])
+                axs[j_name][i_name] = fig.add_subplot(gs[j:j+1, i:i+1])
 
                 ## Information concertning this case
                 _default_info  = {'tex_name' : r'\theta', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
                 
-                _param_info_x  = _PARAMS_PLOT.get(namei, _default_info)
-                _param_info_y  = _PARAMS_PLOT.get(namej, _default_info)
+                _param_info_x  = _PARAMS_PLOT.get(i_name, _default_info)
+                _param_info_y  = _PARAMS_PLOT.get(j_name, _default_info)
 
-                x_min = val_min[namei]
-                x_max = val_max[namei]
-                y_min = val_min[namej]
-                y_max = val_max[namej]
+                x_min = val_min[i_name]
+                x_max = val_max[i_name]
+                y_min = val_min[j_name]
+                y_max = val_max[j_name]
 
-                axs[j][i].set_xlim([x_min, x_max])
+                axs[j_name][i_name].set_xlim([x_min, x_max])
 
                 if i != j :     
-                    axs[namej][namei].set_ylim([y_min, y_max])
+                    axs[j_name][i_name].set_ylim([y_min, y_max])
 
                 if i == j :
-                    axs[namei][namei].set_ylim([0, 1.2])
+                    axs[i_name][i_name].set_ylim([0, 1.2])
 
 
                 ##############
@@ -418,69 +402,83 @@ def prepare_triangle_plot(params_to_plot, val_min, val_max):
 
                 # we remove the ticks if necessary for some parts of this case
                 if j < ngrid -1 :
-                    axs[namej][namei].xaxis.set_ticklabels([])
+                    axs[j_name][i_name].xaxis.set_ticklabels([])
                 if i > 0 : 
-                    axs[namej][namei].yaxis.set_ticklabels([])
+                    axs[j_name][i_name].yaxis.set_ticklabels([])
 
                 if j == ngrid -1 :
-                    axs[namej][namei].set_xlabel(r'${}$'.format(_param_info_x.get('tex_name', r'$\theta$')))
+                    axs[j_name][i_name].set_xlabel(r'${}$'.format(_param_info_x.get('tex_name', r'$\theta$')))
                     x_ticks = _param_info_x.get('ticks', [])
                     if x_ticks != [] :
-                        axs[namej][namei].set_xticks(_param_info_x.get('ticks', []))
-                    axs[namej][namei].tick_params(axis='x', labelsize=8)
-                    for tick in axs[namej][namei].get_xticklabels():
+                        axs[j_name][i_name].set_xticks(_param_info_x.get('ticks', []))
+                    axs[j_name][i_name].tick_params(axis='x', labelsize=8)
+                    for tick in axs[j_name][i_name].get_xticklabels():
                         tick.set_rotation(55)
 
                 if i == 0 and j > 0:
-                    axs[namej][namei].set_ylabel(r'${}$'.format(_param_info_y.get('tex_name', r'$\theta$')))
+                    axs[j_name][i_name].set_ylabel(r'${}$'.format(_param_info_y.get('tex_name', r'$\theta$')))
                     y_ticks = _param_info_y.get('ticks', [])
                     if y_ticks != [] :
-                        axs[namej][namei].set_yticks(_param_info_y.get('ticks', []))
-                    axs[namej][namei].tick_params(axis='y', labelsize=8)
-                    for tick in axs[namej][namei].get_yticklabels():
+                        axs[j_name][i_name].set_yticks(_param_info_y.get('ticks', []))
+                    axs[j_name][i_name].tick_params(axis='y', labelsize=8)
+                    for tick in axs[j_name][i_name].get_yticklabels():
                         tick.set_rotation(55)
            
     return fig, axs
 
 
-def fill_triangle_plot(covariance_matrix, name_params, fiducial_params, axs, **kwargs):
+def fill_triangle_plot(covariance, fiducial_params, axs, **kwargs):
     
     color = kwargs.get('color', None)
+    alpha = kwargs.get('alpha', 0.8)
 
-    for j in range(len(name_params)) : 
-        for i in range(0, j+1) :
+    params_to_plot = list(axs.keys())
+    params_cov     = list(covariance.keys())
 
-            ##############
-            val_x = fiducial_params[name_params[i]]  
-            val_y = fiducial_params[name_params[j]]  
+    params = []
+    for param_p in params_to_plot:
+        if param_p in params_cov:
+            params.append(param_p)
 
-            ## Make the plots now
-            if i != j : 
 
-                # Countour plot for the scatter
-                sub_cov = np.zeros((2, 2))
-                sub_cov[0, 0] = covariance_matrix[i, i]
-                sub_cov[0, 1] = covariance_matrix[i, j]
-                sub_cov[1, 0] = covariance_matrix[j, i]
-                sub_cov[1, 1] = covariance_matrix[j, j]
+    for j, j_name in enumerate(params) : 
+        for i, i_name in enumerate(params): 
 
-                #ellipse_x, ellipse_y = ellipse_from_covariance(sub_cov, [val_x, val_y])
-                #axs[j][i].plot(ellipse_x, ellipse_y, linewidth=0.5, color='blue')
+            if i < j+1:
 
-                confidence_ellipse(sub_cov, val_x, val_y, axs[j][i],  n_std=2, facecolor=color, alpha=0.4)
-                confidence_ellipse(sub_cov, val_x, val_y, axs[j][i],  n_std=1, facecolor=color, alpha=0.8)
+                ##############
+                val_x = fiducial_params[i_name]  
+                val_y = fiducial_params[j_name]  
 
-            if i == j :
+                ## Make the plots now
+                if i != j : 
 
-                axs[i][i].set_ylim([0, 1.2])
-                axs[i][i].set_title(r'${}$'.format(val_x) + f'\n' + r'$\pm{:.3}$'.format(np.sqrt(covariance_matrix[i, i])), fontsize=10)
-    
-                # Plot the gaussian approximation in that panel
-                sigma     = np.sqrt(covariance_matrix[i, i])
-                val_arr   = np.linspace(val_x-5*sigma, val_x+5*sigma, 100)
-                gaussian  = exp(-(val_arr - val_x)**2/2./sigma**2)
+                    # Countour plot for the scatter
+                    sub_cov = np.zeros((2, 2))
+                    sub_cov[0, 0] = covariance[i_name][i_name]
+                    sub_cov[0, 1] = covariance[i_name][j_name]
+                    sub_cov[1, 0] = covariance[j_name][i_name]
+                    sub_cov[1, 1] = covariance[j_name][j_name]
 
-                axs[i][i].plot(val_arr, gaussian, color=color)
+                    #ellipse_x, ellipse_y = ellipse_from_covariance(sub_cov, [val_x, val_y])
+                    #axs[j_name][i_name].plot(ellipse_x, ellipse_y, linewidth=0.5, color='blue')
+
+                    confidence_ellipse(sub_cov, val_x, val_y, axs[j_name][i_name],  n_std=2, facecolor=color, alpha=alpha/2.)
+                    confidence_ellipse(sub_cov, val_x, val_y, axs[j_name][i_name],  n_std=1, facecolor=color, alpha=alpha)
+
+                if i == j :
+
+                    axs[i_name][i_name].set_ylim([0, 1.2])
+                    axs[i_name][i_name].set_title(r'${}$'.format(val_x) + f'\n' + r'$\pm{:.3}$'.format(np.sqrt(covariance[i_name][i_name])), fontsize=10)
+        
+                    # Plot the gaussian approximation in that panel
+                    sigma     = np.sqrt(covariance[i_name][i_name])
+                    val_arr   = np.linspace(val_x-5*sigma, val_x+5*sigma, 100)
+                    gaussian  = exp(-(val_arr - val_x)**2/2./sigma**2)
+
+                    axs[i_name][i_name].plot(val_arr, gaussian, color=color)
+
+
 
 
 def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float = 0, **kwargs) :
@@ -655,7 +653,7 @@ def prepare_2subplots(gridspec_kw = None, **kwargs) :
         Function that plots simple functions of one variable on the same graph
     """
     
-    fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw=gridspec_kw, sharex=True, figsize=(5,4), facecolor="White")
+   
 
     xlim     = kwargs.get('xlim', None)
     ylim_1   = kwargs.get('ylim_1', None)
@@ -666,6 +664,9 @@ def prepare_2subplots(gridspec_kw = None, **kwargs) :
     xlabel   = kwargs.get('xlabel', r'$x$')
     ylabel_1 = kwargs.get('ylabel_1', r'$y$')
     ylabel_2 = kwargs.get('ylabel_2', r'$y$')
+    figsize  = kwargs.get('figsize', (5, 4))
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw=gridspec_kw, sharex=True, figsize=figsize, facecolor="White")
 
     if xlim is not None:
         ax1.set_xlim(xlim)

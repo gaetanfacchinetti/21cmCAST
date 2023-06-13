@@ -230,7 +230,7 @@ def make_config_one_varying_param(config_file: str, param_name: str, values, **k
 
 
 
-def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: int = None) :
+def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: int = None, **kwargs) :
 
     """ 
     ## Run a lightcone from a config file 
@@ -318,6 +318,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                 verbose_ntbk         = True,
                 direc                = cache_path, 
                 random_seed          = random_seed,
+                heating_rate_output  = kwargs.get('heating_rate_output', None),
             )
         
     except Exception as e :

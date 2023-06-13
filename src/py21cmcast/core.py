@@ -88,7 +88,7 @@ def compare_arrays(array_1 : np.ndarray, array_2 : np.ndarray, eps : float):
     if len(array_1) != len(array_2):
         return False
     
-    return np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps)
+    return bool(np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps))
     
 
 
@@ -101,8 +101,8 @@ class Run:
     or the power_spectrum of the brightness temperature.
     """
 
-    def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list = None, k_bins : list = None, 
-                 logk : bool = False, p : float = 0., load : bool = True, save : bool = True, 
+    def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list = None, z_array : list = None, 
+                k_bins : list = None, logk : bool = False, p : float = 0., load : bool = True, save : bool = True, 
                  verbose : bool  = True, **kwargs) -> None: 
         """
         Parameters
@@ -113,6 +113,8 @@ class Run:
             Name of the lightcone file
         z_bins : list
             Array of redshift bin edges
+        z_centers : list
+            Array of redshift bin centers
         k_bins : list
             Array of mode bin edges
         logk : bool
@@ -155,31 +157,35 @@ class Run:
             # then we don't need to go further and can skip the full computation again
             if _load_successfull is True:
                 if z_bins is not None:
-                    if compare_arrays(self._z_bins, z_bins, 1e-5) is False:
+                    if compare_arrays(self._z_bins, z_bins, 1e-5) is not True:
                         _params_match = False
                         warnings.warn("z-bins in input are different than the one used to precompute the tables")
                 if k_bins is not None:
-                    if compare_arrays(self._k_bins, k_bins, 1e-5) is False:
+                    if compare_arrays(self._k_bins, k_bins, 1e-5) is not True:
                         _params_match = False
                         warnings.warn("k-bins in input are different than the one used to precompute the tables")
+                if z_array is not None:
+                    if compare_arrays(self._z_array, z_array, 1e-5) is not True:
+                        _params_match = False
+                        warnings.warn("z-array in input is different than the one used to precompute the tables")
 
                 if _params_match is True:
                     return None
                 else:
                     print("recomputing the tables with the new bins")
 
-            if (z_bins is None or k_bins is None) and _load_successfull is False:
+            if (z_bins is None or k_bins is None or z_array is None) and _load_successfull is False:
                 raise ValueError("Need to pass z_bins and k_bins as inputs")
 
 
-        if load is False or _load_successfull is False :
+        if load is False or _load_successfull is False or _params_match is False:
 
             self._z_bins    = z_bins
             self._k_bins    = k_bins
+            self._z_array   = z_array
             self._logk      = logk
             self._p         = p
 
-            
             # Get the power spectrum from the Lightcone
             self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
 
@@ -203,7 +209,7 @@ class Run:
 
         self._lc_redshifts        = self._lightcone.lightcone_redshifts
         self._chunk_indices       = [np.argmin(np.abs(self._lc_redshifts - z)) for z in self._z_bins]
-        self._z_array, _data_arr  = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, 
+        _, _data_arr  = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, 
                                                                 n_psbins=self._k_bins.value, logk=self._logk, 
                                                                 remove_nans=False, vb=False)
         
@@ -428,7 +434,7 @@ class Fiducial(Run):
     # Class to define the Fiducial run
     """
 
-    def __init__(self, dir_path : str, z_bins : list, k_bins : list, logk : bool,
+    def __init__(self, dir_path : str, z_bins : list, z_array : list, k_bins : list, logk : bool,
                 observation : str = "", frac_noise : float = 0., rs : int = None, 
                 ps_modeling_noise : np.ndarray = None, verbose : bool = False, **kwargs) -> None:
 
@@ -439,6 +445,8 @@ class Fiducial(Run):
             Path to the directory where the FIDUCIAL lightcone is saved
         z_bins : list
             Array of redshift bin edges
+        z_array : list
+            Array of redshift bin centers
         k_bins : list
             Array of mode bin edges
         logk : bool
@@ -500,7 +508,7 @@ class Fiducial(Run):
         self._rs   = _file_name.split('_')[-2][2:]
 
         # Initialise the parent object
-        super().__init__(self._dir_path, _file_name, z_bins, k_bins, logk, verbose = verbose, **kwargs)
+        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, verbose = verbose, **kwargs)
         
         # Getting the noise associated to the fiducial
         self._frac_noise         = frac_noise
@@ -621,12 +629,10 @@ class Fiducial(Run):
         # We recompute a second power spectra for the sensitivity on a broader range
         # We use the same redshift chunks but let the array of mode free (and here logarithmically spaced by default)
         # This makes the code longer but it is necessary to have everything well defined and no numerical problems
-        _z_array_sens, _data_arr   = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, remove_nans=False, vb=False)
+        _, _data_arr   = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, remove_nans=False, vb=False)
 
         self._k_array_sens         = np.array([data['k'] for data in _data_arr])
         self._power_spectrum_sens  = np.array([data['delta'] for data in _data_arr])
-     
-        assert compare_arrays(_z_array_sens, self._z_array, 1e-3), 'Problem of redshift compatibilities with the PS computed for the sensitivity'
 
         self._is_ps_sens_computed = True
 
@@ -725,6 +731,7 @@ class Parameter:
         self._dir_path       = self._fiducial.dir_path
         self._astro_params   = self._fiducial.astro_params
         self._z_bins         = self._fiducial.z_bins
+        self._z_array        = self._fiducial.z_array
         self._k_bins         = self._fiducial.k_bins
         self._logk           = self._fiducial.logk
 
@@ -814,7 +821,7 @@ class Parameter:
         # We get the lightcones and then create the corresponding runs objects
         self._runs =  [Run(self._dir_path, 
                                     'Lightcone_rs' + str(self._fiducial.rs) + '_' + self._name + self._add_name + '_{:.4e}'.format(p) + '.h5', 
-                                    self._z_bins, self._k_bins, 
+                                    self._z_bins, self._z_array, self._k_bins, 
                                     self._logk, p, **kwargs) for p in self._p_value]
 
         if verbose is True: 

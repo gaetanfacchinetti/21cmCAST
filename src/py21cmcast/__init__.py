@@ -25,6 +25,7 @@ from .tools import (
 
 from .power import (
     define_grid_modes_redshifts,
+    generate_k_bins,
 )
 
 from .core import (

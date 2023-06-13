@@ -12,10 +12,11 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="<https://github.com/gaetanfacchinetti/21cmCAST>",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages("src"),
+    package_dir={"": "src"},
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: GNU LICENCE :: GPL3",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
