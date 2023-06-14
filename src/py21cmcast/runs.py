@@ -312,13 +312,13 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                 user_params          = user_params,
                 astro_params         = astro_params,
                 flag_options         = flag_options,
-                coarsen_factor       = coarsen_factor, 
                 lightcone_quantities = lightcone_quantities,
                 global_quantities    = global_quantities,
-                verbose_ntbk         = True,
                 direc                = cache_path, 
                 random_seed          = random_seed,
                 heating_rate_output  = kwargs.get('heating_rate_output', None),
+                coarsen_factor       = coarsen_factor, 
+                verbose_ntbk         = True,
             )
         
     except Exception as e :
