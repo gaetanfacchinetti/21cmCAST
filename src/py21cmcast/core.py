@@ -195,7 +195,7 @@ class Run:
             self._flag_options = dict(self._lightcone.flag_options.self)
 
             # Compute the power spectrum and fetch global quantities
-            self._get_power_spectra()
+            self._get_power_spectra()    
             self._get_global_quantities()
 
             # Compute the optical depth to reionization
@@ -220,7 +220,7 @@ class Run:
         assert np.all(np.abs(np.diff(_k_array, axis=0)[0]/_k_array) <= 1e-3)
         self._k_array = _k_array[0]
 
-
+    
     def _get_global_quantities(self):
 
         _lc_glob_redshifts = self._lightcone.node_redshifts
@@ -237,6 +237,7 @@ class Run:
         self._x_e_box       = interpolate.interp1d(_lc_glob_redshifts, _x_e_box)(self._z_glob)
         self._Ts_box        = interpolate.interp1d(_lc_glob_redshifts, _Ts_box)(self._z_glob)
         self._Tk_box        = interpolate.interp1d(_lc_glob_redshifts, _Tk_box)(self._z_glob)
+
 
     def _save(self):
         """
@@ -492,16 +493,23 @@ class Fiducial(Run):
         self._do_load = kwargs.get('load', True)
 
         # get the lightcones filenames
-        if self._do_load is False:
-            # if we do not load, one has to find a lightcone for the fiducial
+        _loading_success = True
+        if self._do_load is True:
+            # here we look in the cache folder
+            _str_file_name = self._dir_path + "/cache/Table_Lightcone_rs*_FIDUCIAL.h5.npz" if (rs is None) else self._dir_path + "/cache/Table_Lightcone_rs" + str(rs) + "_FIDUCIAL.h5.npz"
+            _lightcone_file_name = glob.glob(_str_file_name)
+            
+            if len(_lightcone_file_name) == 1:
+                _loading_success = True
+                _file_name = (_lightcone_file_name[0].split('/')[-1])[6:-4] # remove the dir_path and 'Table_' ... '.npz'
+            else:
+                _loading_success = False
+
+          # if we do not load, one has to find a lightcone for the fiducial
+        if self._do_load is False or _loading_success is False : 
             _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
             _lightcone_file_name = glob.glob(_str_file_name)
             _file_name = _lightcone_file_name[0].split('/')[-1] 
-        else:
-            # Here we look in the cache folder
-            _str_file_name = self._dir_path + "/cache/Table_Lightcone_rs*_FIDUCIAL.h5.npz" if (rs is None) else self._dir_path + "/cache/Table_Lightcone_rs" + str(rs) + "_FIDUCIAL.h5.npz"
-            _lightcone_file_name = glob.glob(_str_file_name)
-            _file_name = (_lightcone_file_name[0].split('/')[-1])[6:-4] # Remove the dir_path and 'Table_' ... '.npz'
 
         assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
         
@@ -752,9 +760,38 @@ class Parameter:
         if name not in self._astro_params:
             ValueError("ERROR: the name does not corresponds to any varied parameters")
 
+
+        _loading_success = True
+
         ############################################################
         # get the lightcones / saved cached values from the filenames
-        if self._load is False:
+        if self._load is True:
+              
+            _file_name = self._dir_path + "/cache/Table_Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
+            
+            
+            if self._values is None :
+                # if we do not specify values for the parameter
+                _lightcone_file_name = glob.glob(_file_name + "[0-9\-]*" + ".h5.npz")
+                _lightcone_file_name = [fname[:-4] for fname in _lightcone_file_name] 
+            else: 
+                # if we specify a value for the parameter
+                if not isinstance(self._values, list):
+                    self._values = [self._values]
+                _lval = [None] * len(self._values)
+                
+                for ival, val in enumerate(self._values):
+                    _lval[ival] = glob.glob(_file_name + '{:.4e}'.format(val) + ".h5.npz")
+
+                if len(_lval[0]) > 0:
+                    _lightcone_file_name = [lval[0][:-4] for lval in _lval] 
+                else:
+                    _lightcone_file_name = []
+            
+            # test if saved lightcones have been found successfully
+            _loading_success = True if len(_lightcone_file_name) > 0 else False
+
+        if self._load is False or _loading_success is False:
             
             _file_name = self._dir_path + "/Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
             if self._values is None :
@@ -770,25 +807,7 @@ class Parameter:
                     assert len(_lval[0]) > 0,  FileNotFoundError(f'No files found for the lightcone associated to ' + self._name + self._add_name + f' variations for value: ' + '{:.4e}'.format(val))
                 
                 _lightcone_file_name = [lval[0] for lval in _lval]        
-        else:
              
-            _file_name = self._dir_path + "/cache/Table_Lightcone_rs" + str(self._fiducial.rs) + "_*" + self._name + self._add_name + "_"
-            
-            if self._values is None :
-                _lightcone_file_name = glob.glob(_file_name + "[0-9\-]*" + ".h5.npz")
-                _lightcone_file_name = [fname[:-4] for fname in _lightcone_file_name] 
-            else: 
-                
-                if not isinstance(self._values, list):
-                    self._values = [self._values]
-                _lval = [None] * len(self._values)
-                
-                for ival, val in enumerate(self._values):
-                    _lval[ival] = glob.glob(_file_name + '{:.4e}'.format(val) + ".h5.npz")
-                    assert len(_lval[0]) > 0,  FileNotFoundError(f'No files found for the lightcone associated to ' + self._name + self._add_name + f' variations for value: ' + '{:.4e}'.format(val))
-                
-                _lightcone_file_name = [lval[0][:-4] for lval in _lval] 
-
         assert len(_lightcone_file_name) > 0,  FileNotFoundError(f'No files found for the lightcone associated to ' + str(self._name) + f' variations')
         ############################################################
 
@@ -853,7 +872,7 @@ class Parameter:
         if self._plot is True:
             self.plot_ps_derivative()
             self.plot_weighted_ps_derivative()
-            
+            self.plot_power_spectra()
 
     @property
     def ps_derivative(self):

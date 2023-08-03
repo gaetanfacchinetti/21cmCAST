@@ -319,7 +319,6 @@ def make_triangle_plot(covariance, fiducial_params, **kwargs) :
     # add the fiducial values in the infos
     val_min = {}
     val_max = {}
-
     
     _default_info  = {'tex_name' : r'\theta', 'min' : None, 'max' : None, 'ticks' : [], 'positive' : False, 'val' : None}
 
