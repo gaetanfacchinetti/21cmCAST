@@ -48,11 +48,12 @@ import os
 
 from py21cmcast import tools as p21c_tools
 import py21cmfast   as p21f
+import warnings
 
 import numpy as np
 
 
-def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existing_dir: bool = False) -> None :
+def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = False, verbose = False) -> None :
 
     """ 
     Initialise the runs for a fisher analysis according to 
@@ -64,7 +65,7 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
         Path to the config file representing the fiducial
     q_scale : float, optional
         Gives the points where to compute the derivative in pourcentage of the fiducial parameters
-    erase_fir : bool, optional
+    erase_dir : bool, optional
         If True forces the creation of a folder 
     """
 
@@ -78,31 +79,48 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     cache_dir       = config.get('run', 'cache_dir')
 
     extra_params = {}
+
+    try:
+        lightcone_q       = p21c_tools.read_config_params(config.items('lightcone_quantities'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section lightcone_quantities provided")
+        lightcone_q = {}
+
+    try:
+        global_q       = p21c_tools.read_config_params(config.items('global_quantities'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section global_quantities provided")
+        global_q = {}    
+
     
-    try: 
-        extra_params['min_redshift']  = float(config.get('extra_params','min_redshift'))
-    except configparser.NoOptionError: 
-        print("Warning: min_redshift set to 5 by default")
-        extra_params['min_redshift']  = 5
-
-    try:
-        extra_params['max_redshift']    = float(config.get('extra_params','max_redshift'))
-    except configparser.NoOptionError:
-        print("Warning: max_redshift set to 35 by default")
-        extra_params['max_redshift']  = 35   
-
-    try:
-        extra_params['coarsen_factor']  = int(config.get('extra_params', 'coarsen_factor'))
-    except configparser.NoOptionError:
-        print("Warning: coarsen factor undifined")
-
+    extra_params      = p21c_tools.read_config_params(config.items('extra_params'), int_type = False)
     user_params       = p21c_tools.read_config_params(config.items('user_params'))
     flag_options      = p21c_tools.read_config_params(config.items('flag_options'))
     astro_params_fid  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False)
-    astro_params_vary = p21c_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
-    one_side_der      = p21c_tools.read_config_params(config.items('one_side_param_derivative'))
-    percentage        = p21c_tools.read_config_params(config.items('percentage'))
     
+    try: 
+        astro_params_vary = p21c_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section astro_params_vary provided")
+        astro_params_vary = {}
+
+    try:
+        one_side_der      = p21c_tools.read_config_params(config.items('one_side_param_derivative'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section one_side_param_derivative provided")
+        one_side_der = {}
+
+    try: 
+        percentage        = p21c_tools.read_config_params(config.items('percentage'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section percentage provided")
+        percentage = {}
+
     astro_params_run_all = {}
     astro_params_run_all['FIDUCIAL'] = astro_params_fid
 
@@ -152,10 +170,10 @@ def init_runs_from_fiducial(config_file: str, q_scale: float = 3., clean_existin
     # Write down the separate config files
     irun = 0
     for key, astro_params in astro_params_run_all.items() : 
-        p21c_tools.write_config_params(output_run_dir + '/Config_' + key + ".config", name, cache_dir, extra_params, user_params, flag_options, astro_params, key)
+        p21c_tools.write_config_params(output_run_dir + '/Config_' + key + ".config", name, output_run_dir, cache_dir, 
+                                       lightcone_q, global_q, extra_params, user_params, flag_options, astro_params, key)
         irun = irun + 1
         
-
     return 
 
 
@@ -230,6 +248,8 @@ def make_config_one_varying_param(config_file: str, param_name: str, values, **k
 
 
 
+
+
 def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: int = None, **kwargs) :
 
     """ 
@@ -261,29 +281,16 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     config.read(config_file)
 
     name            = config.get('run', 'name')
-    run_id          = config.get('run', 'run_id') 
+    run_id          = config.get('run', 'run_id', fallback='') 
+    output_dir      = config.get('run', 'output_dir')
     cache_dir       = config.get('run', 'cache_dir')
+    
 
-    print("Treating config file :", config_file)
+    ## Need to implement this next time
+    lightcone_q     = p21c_tools.read_config_params(config.items('lightcone_quantities'))
+    global_q        = p21c_tools.read_config_params(config.items('global_quantities'))
 
-    try: 
-        min_redshift  = float(config.get('extra_params','min_redshift'))
-    except configparser.NoOptionError: 
-        print("Warning: min_redshift set to 5 by default")
-        min_redshift = 5
-
-    try:
-        max_redshift    = float(config.get('extra_params','max_redshift'))
-    except configparser.NoOptionError:
-        print("Warning: max_redshift set to 35 by default")
-        max_redshift  = 35   
-
-    try:
-        coarsen_factor  = int(config.get('extra_params', 'coarsen_factor'))
-    except configparser.NoOptionError:
-        print("Warning: coarsen factor undifined")
-        coarsen_factor = None 
-
+    extra_params    = p21c_tools.read_config_params(config.items('extra_params'), int_type=False)
     user_params     = p21c_tools.read_config_params(config.items('user_params'))
     flag_options    = p21c_tools.read_config_params(config.items('flag_options'))
     astro_params    = p21c_tools.read_config_params(config.items('astro_params'), int_type=False)
@@ -301,14 +308,27 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     
     ####################### Running the lightcone ############################
 
-    lightcone_quantities = ('brightness_temp', )
-    global_quantities    = ('brightness_temp', 'xH_box', 'x_e_box', 'Ts_box', 'Tk_box',)
+    lightcone_quantities = ()
+    global_quantities = ()
+
+    for key, value in lightcone_q.items():
+        if value is True:
+            lightcone_quantities += (key,)
+    
+    for key, value in global_q.items():
+        if value is True:
+            global_quantities += (key,)
+
+    ## Set default values to output if nothing is set in the config file
+    if len(lightcone_quantities) == 0:
+        lightcone_quantities = ('xH_box',)
+
+    if len(global_quantities) == 0:
+        global_quantities = ('brightness_temp', 'xH_box',)
 
     try: 
 
         lightcone = p21f.run_lightcone(
-                redshift             = min_redshift,
-                max_redshift         = max_redshift, 
                 user_params          = user_params,
                 astro_params         = astro_params,
                 flag_options         = flag_options,
@@ -316,9 +336,8 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                 global_quantities    = global_quantities,
                 direc                = cache_path, 
                 random_seed          = random_seed,
-                heating_rate_output  = kwargs.get('heating_rate_output', None),
-                coarsen_factor       = coarsen_factor, 
-                verbose_ntbk         = True,
+                **extra_params,
+                **kwargs,
             )
         
     except Exception as e :
@@ -336,7 +355,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     except FileNotFoundError:
         pass
 
-    return lightcone, run_id
+    return lightcone, run_id, output_dir
 
 
     

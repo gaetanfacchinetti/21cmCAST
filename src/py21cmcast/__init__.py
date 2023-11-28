@@ -4,7 +4,7 @@ from .experiments import (
 )
 
 from .runs import (
-    init_runs_from_fiducial,
+    init_runs,
     make_config_one_varying_param,
     run_lightcone_from_config,
 )

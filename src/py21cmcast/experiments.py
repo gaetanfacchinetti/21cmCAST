@@ -17,11 +17,18 @@
 ##################################################################################
 
 
-import py21cmsense as p21s
+PY21CMSENSE = True
+try :
+    import py21cmsense as p21s
+    from py21cmsense import TheoryModel
+except ImportError:
+    PY21CMSENSE = False
+
 import numpy       as np
 
 from astropy import units
 from scipy   import interpolate
+
 
 
 def define_HERA_observation(z):
@@ -39,7 +46,7 @@ def define_HERA_observation(z):
     hera_layout = p21s.antpos.hera(
         hex_num = 11,             # number of antennas along a side
         separation= 14 * units.m,  # separation between antennas (in metres)
-        dl=12.12 * units.m        # separation between rows
+        row_separation=12.12 * units.m        # separation between rows
     )
 
     beam = p21s.beam.GaussianBeam(
@@ -65,6 +72,24 @@ def define_HERA_observation(z):
     return observation
 
 
+class ComputedModel(TheoryModel):
+
+    use_littleh = False
+
+    def __init__(self, k_21:np.ndarray, delta_21_sqr:np.ndarray) -> None:
+        
+        self.k = k_21
+        self.delta_sqr = delta_21_sqr
+
+        # interpolation function for this redshift
+        self.interp = interpolate.interp1d(k_21, delta_21_sqr / (units.mK)**2)
+
+    # Note that here z is a dummy variable
+    def delta_squared(self, z: float, k: np.ndarray) -> units.Quantity[units.mK**2]:
+        return self.interp((k * units.Mpc)) * (units.mK)**2
+
+
+
 
 def extract_noise_from_fiducial(k_in, dsqr_in, k_out, observation) :
     """
@@ -85,12 +110,15 @@ def extract_noise_from_fiducial(k_in, dsqr_in, k_out, observation) :
 
     """
 
-
-    sensitivity       = p21s.PowerSpectrum(observation=observation, k_21 = k_in / units.Mpc, 
-                                            delta_21 = dsqr_in * (units.mK**2), 
-                                            foreground_model='moderate') 
+    #sensitivity       = p21s.PowerSpectrum(observation=observation, k_21 = k_in / units.Mpc, 
+    #                                        delta_21 = dsqr_in * (units.mK**2), 
+    #                                        foreground_model='moderate') 
     
-    k_sens            = sensitivity.k1d.value * p21s.config.COSMO.h
+    ## implementation compatible with the new version of 21cmSense
+    theory_model = ComputedModel(k_21 = k_in / units.Mpc, delta_21_sqr = dsqr_in * (units.mK**2))
+    sensitivity  = p21s.PowerSpectrum(observation = observation, theory_model = theory_model, foreground_model = 'moderate')
+    
+    k_sens            = sensitivity.k1d.value * sensitivity.cosmo.h
     std_21cmSense     = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
 
     std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.inf)(k_out)

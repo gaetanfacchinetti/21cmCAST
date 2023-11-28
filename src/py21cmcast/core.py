@@ -647,6 +647,11 @@ class Fiducial(Run):
 
     def compute_sensitivity(self, observation):
 
+        valid_observatories = ['HERA']
+
+        if p21c_exp.PY21CMSENSE is False and observation in valid_observatories:
+            raise ImportError("The module 21cmSense could not be imported or was not found, sensitivity cannot be computed")
+
         _std = None
         self._ps_exp_noise = None
 
@@ -654,7 +659,8 @@ class Fiducial(Run):
 
         if _load_succesfull is False:
 
-            if self._is_ps_sens_computed is False and observation == 'HERA':
+            # if the power spectrum is not computed we do compute it
+            if self._is_ps_sens_computed is False and observation in valid_observatories:
                 self.compute_power_spectrum_sensitivity()
 
             if observation == 'HERA':

@@ -127,7 +127,10 @@ def read_config_params(config_items, int_type = True):
 
 
 
-def write_config_params(filename, name, cache_dir, extra_params, user_params, flag_options, astro_params, key):
+def write_config_params(filename, name, output_dir, cache_dir, 
+                        lightcone_quantities, global_quantities, 
+                        extra_params, user_params, flag_options, 
+                        astro_params, key):
 
     with open(filename, 'w') as f:
        
@@ -137,12 +140,26 @@ def write_config_params(filename, name, cache_dir, extra_params, user_params, fl
         print("[run]", file=f)
         print("name      : " + name, file=f)
         print("run_id    : " + key, file=f)
+        print("output_dir : " + output_dir, file=f)
         print("cache_dir : " + cache_dir, file=f)
         print('', file=f)
         
         print("[extra_params]", file=f)
         
         for key, value in extra_params.items():
+            print(key + " : " + str(value), file=f)
+
+        
+        print('', file=f)
+        print("[lightcone_quantities]", file=f)
+
+        for key, value in lightcone_quantities.items():
+            print(key + " : " + str(value), file=f)
+
+        print('', file = f)
+        print("[global_quantities]", file=f)
+
+        for key, value in global_quantities.items():
             print(key + " : " + str(value), file=f)
 
         print('', file=f)
