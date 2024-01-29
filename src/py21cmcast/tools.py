@@ -130,7 +130,7 @@ def read_config_params(config_items, int_type = True):
 def write_config_params(filename, name, output_dir, cache_dir, 
                         lightcone_quantities, global_quantities, 
                         extra_params, user_params, flag_options, 
-                        astro_params, key):
+                        astro_params, cosmo_params, key):
 
     with open(filename, 'w') as f:
        
@@ -179,6 +179,12 @@ def write_config_params(filename, name, output_dir, cache_dir,
         print("[astro_params]", file=f)
 
         for key, value in astro_params.items():
+            print(key + " : " + str(value), file=f)
+
+        print('', file=f)
+        print("[cosmo_params]", file=f)
+
+        for key, value in cosmo_params.items():
             print(key + " : " + str(value), file=f)
 
 

@@ -45,6 +45,7 @@
 
 import glob
 
+
 import numpy as np
 import pickle
 from scipy   import interpolate
@@ -90,6 +91,7 @@ def compare_arrays(array_1 : np.ndarray, array_2 : np.ndarray, eps : float):
     
     return bool(np.all(2* np.abs((array_1 - array_2)/(array_1 + array_2)) < eps))
     
+
 
 
 class Run:
@@ -148,7 +150,9 @@ class Run:
 
         self._verbose = verbose
 
+        ## if load true we try loading precomputed tables
         if load is True : 
+
             _load_successfull = self._load()
 
             _params_match = True
@@ -224,7 +228,7 @@ class Run:
     def _get_global_quantities(self):
 
         _lc_glob_redshifts = self._lightcone.node_redshifts
-        self._z_glob       = np.linspace(_lc_glob_redshifts[-1], _lc_glob_redshifts[0], 100)
+        self._z_glob       = np.linspace(_lc_glob_redshifts[-1], _lc_glob_redshifts[0], 200)
   
         _global_signal = self._lightcone.global_quantities.get('brightness_temp', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _xH_box        = self._lightcone.global_quantities.get('xH_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
@@ -744,6 +748,7 @@ class Parameter:
 
         self._dir_path       = self._fiducial.dir_path
         self._astro_params   = self._fiducial.astro_params
+        self._cosmo_params   = self._fiducial.cosmo_params
         self._z_bins         = self._fiducial.z_bins
         self._z_array        = self._fiducial.z_array
         self._k_bins         = self._fiducial.k_bins
@@ -758,14 +763,19 @@ class Parameter:
         if self._add_name != '':
             self._add_name = '_' + self._add_name
             
-        __params_plot        = p21c_tools._PARAMS_PLOT.get(self._name, None)
+        __params_plot  = p21c_tools._PARAMS_PLOT.get(self._name, None)
         self._tex_name = __params_plot['tex_name'] if (__params_plot is not None) else p21c_tools._PARAMS_PLOT.get('theta', None)['tex_name']
        
         self._load = kwargs.get('load', True)
 
-        if name not in self._astro_params:
-            ValueError("ERROR: the name does not corresponds to any varied parameters")
+        if (name not in self._astro_params) or (name not in self._cosmo_params):
+            ValueError("ERROR: the name does not corresponds to any parameter")
 
+        if name in self._astro_params:
+            self._param_fid = self._astro_params[self._name]
+        
+        if name in self._cosmo_params:
+            self._param_fid = self._cosmo_params[self._name]
 
         _loading_success = True
 
@@ -913,10 +923,7 @@ class Parameter:
         
         _der = [None] * len(self._z_array)
         
-        # For convinience some parameters in 21cmFAST have to be defined by their log value
-        # HOWEVER astro_params contains the true value which makes things not confusing at ALL
-        # For these parameters we need to get the log again
-        _param_fid = self._astro_params[self._name]
+        #_param_fid = self._astro_params[self._name]
 
         # get all the parameters and sort them
         _params = np.zeros(len(self._runs))
@@ -924,7 +931,7 @@ class Parameter:
         for irun, run in enumerate(self._runs):
             _params[irun] = run.p
 
-        _params         = np.append(_params, _param_fid)
+        _params         = np.append(_params, self._param_fid)
         _params_sorted  = np.sort(_params)
         _mixing_params  = np.argsort(_params)
 
@@ -1037,7 +1044,7 @@ class Parameter:
 
         _ps        = [self._fiducial.power_spectrum]
         _ps_errors = [self._fiducial.ps_poisson_noise]
-        _p_vals    = [self._fiducial.astro_params[self._name]]
+        _p_vals    = [self._param_fid]
 
         for run in self._runs:
             _ps.append(run.power_spectrum)

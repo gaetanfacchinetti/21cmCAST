@@ -99,12 +99,20 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
     user_params       = p21c_tools.read_config_params(config.items('user_params'))
     flag_options      = p21c_tools.read_config_params(config.items('flag_options'))
     astro_params_fid  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False)
-    
+    cosmo_params_fid  = p21c_tools.read_config_params(config.items('cosmo_params'), int_type = False)
+
     try: 
         astro_params_vary = p21c_tools.read_config_params(config.items('astro_params_vary'), int_type = False)
     except configparser.NoSectionError:
         if verbose: 
             warnings.warn("No section astro_params_vary provided")
+        astro_params_vary = {}
+
+    try: 
+        cosmo_params_vary = p21c_tools.read_config_params(config.items('cosmo_params_vary'), int_type = False)
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section cosmo_params_vary provided")
         astro_params_vary = {}
 
     try:
@@ -121,8 +129,6 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
             warnings.warn("No section percentage provided")
         percentage = {}
 
-    astro_params_run_all = {}
-    astro_params_run_all['FIDUCIAL'] = astro_params_fid
 
     # Make the directory to store the outputs and everything
     output_run_dir = output_dir + "/" + name.upper() + "/"
@@ -132,7 +138,23 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
         print('WARNING: Cannot create a clean new folder because clean_existing_dir is False')
         return 
 
-    for param, value in astro_params_vary.items(): 
+    astro_params_run_all = {}
+    astro_params_run_all['FIDUCIAL'] = astro_params_fid
+
+    cosmo_params_run_all = {}
+    cosmo_params_run_all['FIDUCIAL'] = cosmo_params_fid
+
+    params_vary  = {}
+    class_params = {}
+    
+    for param, value in astro_params_vary.items():
+        params_vary[param] = value
+        class_params[param] = "ASTRO"
+    for param, value in cosmo_params_vary.items():
+        params_vary[param] = value
+        class_params[param] = "COSMO"
+
+    for param, value in params_vary.items(): 
         
         _side_der = one_side_der.get(param, None)
         _percentage = percentage.get(param, True)
@@ -147,7 +169,12 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
             else: 
                 ValueError("The arguments of one_side_param_derivative have to be '+' or '-'")
 
-        p_fid = astro_params_fid[param]
+        if class_params[param] == "ASTRO":
+            p_fid = astro_params_fid[param] 
+        elif class_params[param] == "COSMO":
+            p_fid = cosmo_params_fid[param]
+        else:
+            ValueError("Parameter varied is neither astro or cosmo.")
        
         if isinstance(value, float) and value > 0:
             q = value/vary_array
@@ -161,19 +188,28 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
             print('Parameter ' + str(param) + ' varied by ' + str(value) + ' percent of the fiducial')
 
         astro_params_run = astro_params_fid.copy()
+        cosmo_params_run = cosmo_params_fid.copy()
 
         for i, pp in enumerate(p):
-            astro_params_run[param] = pp
-            astro_params_run_all[param + '_{:.4e}'.format(pp)] = astro_params_run.copy()
-        
-    
+            if class_params[param] == "ASTRO":
+                astro_params_run[param] = pp
+                astro_params_run_all[param + '_{:.4e}'.format(pp)] = astro_params_run.copy()
+            elif class_params[param] == "COSMO":
+                cosmo_params_run[param] = pp
+                cosmo_params_run_all[param + '_{:.4e}'.format(pp)] = cosmo_params_run.copy()
+                
     # Write down the separate config files
     irun = 0
     for key, astro_params in astro_params_run_all.items() : 
         p21c_tools.write_config_params(output_run_dir + '/Config_' + key + ".config", name, output_run_dir, cache_dir, 
-                                       lightcone_q, global_q, extra_params, user_params, flag_options, astro_params, key)
+                                       lightcone_q, global_q, extra_params, user_params, flag_options, astro_params, cosmo_params_fid, key)
         irun = irun + 1
         
+    for key, cosmo_params in cosmo_params_run_all.items() : 
+        p21c_tools.write_config_params(output_run_dir + '/Config_' + key + ".config", name, output_run_dir, cache_dir, 
+                                       lightcone_q, global_q, extra_params, user_params, flag_options, astro_params_fid, cosmo_params, key)
+        irun = irun + 1
+    
     return 
 
 
