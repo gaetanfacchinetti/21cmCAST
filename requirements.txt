@@ -30,6 +30,7 @@ numpy==1.26.3
     #   powerbox
     #   py21cmcast (pyproject.toml)
     #   pyerfa
+    #   scipy
 packaging==23.2
     # via
     #   astropy
@@ -46,6 +47,8 @@ python-dateutil==2.8.2
     # via matplotlib
 pyyaml==6.0.1
     # via astropy
+scipy==1.12.0
+    # via py21cmcast (pyproject.toml)
 six==1.16.0
     # via python-dateutil
 zipp==3.17.0

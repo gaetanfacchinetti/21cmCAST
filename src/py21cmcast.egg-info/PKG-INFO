@@ -691,11 +691,14 @@ Requires-Dist: matplotlib>=3.4.3
 Requires-Dist: powerbox>=0.7.3
 Requires-Dist: configparser>=6.0.0
 Requires-Dist: astropy>=5.0.0
+Requires-Dist: scipy
 Provides-Extra: dev
 Requires-Dist: 21cmSense>=2.0.0; extra == "dev"
 Requires-Dist: 21cmfast>=3.0.0; extra == "dev"
 
 # 21cmCAST
+
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/py21cmcast)](https://pypi.org/project/py21cmcast/)
 
 This package provides tools to perform Fisher fore**CAST**s from 21cmFAST outputs. It has been built on / complementarily to the [21cmFish](https://21cmfish.readthedocs.io/en/latest/) package[^1]. A detailed example of how it works can be found in [**scripts/exec/fisher.ipynb**](./scripts/exec/fisher.ipynb). 
 
