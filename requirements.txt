@@ -4,22 +4,10 @@
 #
 #    pip-compile pyproject.toml
 #
-21cmfast==3.3.1
-    # via py21cmcast (pyproject.toml)
 astropy==6.0.0
-    # via
-    #   21cmfast
-    #   py21cmcast (pyproject.toml)
+    # via py21cmcast (pyproject.toml)
 astropy-iers-data==0.2024.1.29.0.30.37
     # via astropy
-bidict==0.22.1
-    # via 21cmfast
-cached-property==1.5.2
-    # via 21cmfast
-cffi==1.16.0
-    # via 21cmfast
-click==8.1.7
-    # via 21cmfast
 configparser==6.0.0
     # via py21cmcast (pyproject.toml)
 contourpy==1.2.0
@@ -28,27 +16,20 @@ cycler==0.12.1
     # via matplotlib
 fonttools==4.47.2
     # via matplotlib
-h5py==3.10.0
-    # via 21cmfast
 importlib-resources==6.1.1
     # via matplotlib
 kiwisolver==1.4.5
     # via matplotlib
 matplotlib==3.8.2
-    # via
-    #   21cmfast
-    #   py21cmcast (pyproject.toml)
+    # via py21cmcast (pyproject.toml)
 numpy==1.26.3
     # via
-    #   21cmfast
     #   astropy
     #   contourpy
-    #   h5py
     #   matplotlib
     #   powerbox
     #   py21cmcast (pyproject.toml)
     #   pyerfa
-    #   scipy
 packaging==23.2
     # via
     #   astropy
@@ -57,8 +38,6 @@ pillow==10.2.0
     # via matplotlib
 powerbox==0.7.3
     # via py21cmcast (pyproject.toml)
-pycparser==2.21
-    # via cffi
 pyerfa==2.0.1.1
     # via astropy
 pyparsing==3.1.1
@@ -66,11 +45,7 @@ pyparsing==3.1.1
 python-dateutil==2.8.2
     # via matplotlib
 pyyaml==6.0.1
-    # via
-    #   21cmfast
-    #   astropy
-scipy==1.12.0
-    # via 21cmfast
+    # via astropy
 six==1.16.0
     # via python-dateutil
 zipp==3.17.0
