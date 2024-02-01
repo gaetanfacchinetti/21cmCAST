@@ -1,0 +1,33 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "py21cmcast"
+version = "1.0.1"
+description = "Fisher forecasts with 21cm experiments"
+readme = "README.md"
+authors = [{ name = "Gaétan Facchinetti", email = "gaetanfacc@gmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+]
+keywords = ["21cm", "fisher", "statistics", "cosmology"]
+dependencies = [
+    "numpy>=1.16.5",
+    "matplotlib>=3.4.3",
+    "powerbox>=0.7.3",
+    "configparser>=6.0.0", 
+    "astropy>=5.0.0",
+]
+requires-python = ">=3.6"
+
+[project.optional-dependencies]
+dev = ["21cmSense>=2.0.0", "21cmfast>=3.0.0",]
+
+[project.urls]
+Homepage = "https://github.com/gaetanfacchinetti/21cmCAST"

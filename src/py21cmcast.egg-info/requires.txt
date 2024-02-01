@@ -1,0 +1,9 @@
+numpy>=1.16.5
+matplotlib>=3.4.3
+powerbox>=0.7.3
+configparser>=6.0.0
+astropy>=5.0.0
+
+[dev]
+21cmSense>=2.0.0
+21cmfast>=3.0.0

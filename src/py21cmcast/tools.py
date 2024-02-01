@@ -45,7 +45,7 @@
 
 
 
-from pylab import *
+from matplotlib.pyplot import *
 
 from matplotlib.patches import Ellipse
 import matplotlib.transforms as transforms

@@ -50,21 +50,28 @@ import numpy as np
 import pickle
 from scipy   import interpolate
 from astropy import units
+import warnings
 
-import py21cmfast     as p21f
+PY21CMFAST = True
+
+try:
+    import py21cmfast as p21f
+except ImportError:
+    PY21CMFAST = False
+    p21f = None
+    warnings.warn("21cmFAST could not be found! 21cmCAST can work on cached data but will not be able to process any new lightcones.")
 
 from py21cmcast import power         as p21c_p
 from py21cmcast import tools         as p21c_tools
 from py21cmcast import experiments   as p21c_exp
 
-import warnings
+
 
 def warning_on_one_line(message, category, filename, lineno, file=None, line=None):
     _filename = 'py21cmcast/' + filename.split("/")[-1]
     return ' %s:%s: %s (%s)\n' % (_filename, lineno, message, category.__name__)
 
 warnings.formatwarning = warning_on_one_line
-
 
 
 def compare_arrays(array_1 : np.ndarray, array_2 : np.ndarray, eps : float):
@@ -105,7 +112,7 @@ class Run:
 
     def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list = None, z_array : list = None, 
                 k_bins : list = None, logk : bool = False, p : float = 0., load : bool = True, save : bool = True, 
-                 verbose : bool  = True, **kwargs) -> None: 
+                 verbose : bool  = True) -> None: 
         """
         Parameters
         ----------
@@ -191,7 +198,10 @@ class Run:
             self._p         = p
 
             # Get the power spectrum from the Lightcone
-            self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+            if PY21CMFAST:
+                self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+            else : 
+                ImportError("21cmFAST is needed to read new lightcones")
 
             self._astro_params = dict(self._lightcone.astro_params.self)
             self._user_params  = dict(self._lightcone.user_params.self)
@@ -203,7 +213,14 @@ class Run:
             self._get_global_quantities()
 
             # Compute the optical depth to reionization
-            self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+            if PY21CMFAST:
+                try: 
+                    self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+                except:
+                    warnings.warn("Impossible to compute the optical depth to reionization tau_ion")
+                    self._tau_ion = 0.0
+            else : 
+                ImportError("21cmFAST is needed to evaluate the optical depth to reionization")
 
             if save is True:
                 self._save()
@@ -264,7 +281,8 @@ class Run:
                             k_array           = self.k_array,
                             z_bins            = self.z_bins,
                             k_bins            = self.k_bins,
-                            z_glob            = self.z_glob)
+                            z_glob            = self.z_glob, 
+                            tau_ion           = self.tau_ion)
         
         # Prepare the dictionnary of parameters
         param_dict = {'logk' : self.logk, 'p' : self.p, 
@@ -303,8 +321,8 @@ class Run:
                 self._Ts_box            = data.get('Ts_box', None)
                 self._Tk_box            = data.get('Tk_box', None)
                 self._z_glob            = data['z_glob']
+                self._tau_ion           = data['tau_ion'].item()
 
-               
 
             with open(self._filename_params, 'rb') as file:
                 params = pickle.load(file)
@@ -315,10 +333,6 @@ class Run:
                 self._user_params   = params['user_params']
                 self._flag_options  = params['flag_options']  
                 self._cosmo_params  = params['cosmo_params']
-
-            ## Recompute tau_ion from the properties read here
-            self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
-        
 
             return True
 
@@ -440,8 +454,8 @@ class Fiducial(Run):
     """
 
     def __init__(self, dir_path : str, z_bins : list, z_array : list, k_bins : list, logk : bool,
-                observation : str = "", frac_noise : float = 0., rs : int = None, 
-                ps_modeling_noise : np.ndarray = None, verbose : bool = False, **kwargs) -> None:
+                frac_noise : float = 0.2, rs : int = None, ps_modeling_noise : np.ndarray = None, 
+                load : bool = True, save : bool = True, verbose : bool = False, **kwargs) -> None:
 
         """
         Parameters
@@ -456,14 +470,9 @@ class Fiducial(Run):
             Array of mode bin edges
         logk : bool
             Indicates that the k mode edges are logarithmically distributed
-        observation : str, optional
-            Name of the observation to evaluate the constraints. 
-            For now the only working possibility is 'HERA'
-            TO DO: allow it to be the name of a file where to fetch the noise directly
-            Default is a void string '' (i.e. no observation set)
         frac_noise : float, optional
             Percentage level of modeling noise to add to the power spectrum
-            Default is 0
+            Default is 0.2
         rs : int, optional
             Value of the random seed used in 21cmFAST to compute the FIDUCIAL
             Default is None
@@ -471,12 +480,6 @@ class Fiducial(Run):
             Overrides frac_noise by giving the modelign noise in a 2D table depending
             on the redshift bin and the mode bin (of the same size as the power_spectrum).
             Default is None
-        verbose : bool, optional
-            When true, outputs information for the user
-            Default is True
-
-        kwargs
-        ------
         load : bool, optional
             When True, first search for a cached precomputed tables of
             the quantities derived in the class (power_spectrum, noise, etc.)
@@ -486,6 +489,10 @@ class Fiducial(Run):
         save : bool, optional
             When True, save the derived quantities in a cached table
             Default is True
+        verbose : bool, optional
+            When true, outputs information for the user
+            Default is True
+
    
         """
 
@@ -493,12 +500,9 @@ class Fiducial(Run):
         self._filename_exp_noise   = self._dir_path + '/cache/Table_exp_noise'
         self._verbose              = verbose
 
-        self._do_save = kwargs.get('save', True)
-        self._do_load = kwargs.get('load', True)
-
         # get the lightcones filenames
         _loading_success = True
-        if self._do_load is True:
+        if load is True:
             # here we look in the cache folder
             _str_file_name = self._dir_path + "/cache/Table_Lightcone_rs*_FIDUCIAL.h5.npz" if (rs is None) else self._dir_path + "/cache/Table_Lightcone_rs" + str(rs) + "_FIDUCIAL.h5.npz"
             _lightcone_file_name = glob.glob(_str_file_name)
@@ -510,7 +514,7 @@ class Fiducial(Run):
                 _loading_success = False
 
           # if we do not load, one has to find a lightcone for the fiducial
-        if self._do_load is False or _loading_success is False : 
+        if load is False or _loading_success is False : 
             _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
             _lightcone_file_name = glob.glob(_str_file_name)
             _file_name = _lightcone_file_name[0].split('/')[-1] 
@@ -520,17 +524,14 @@ class Fiducial(Run):
         self._rs   = _file_name.split('_')[-2][2:]
 
         # Initialise the parent object
-        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, verbose = verbose, **kwargs)
+        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, load=load, save=save, verbose = verbose)
         
         # Getting the noise associated to the fiducial
         self._frac_noise         = frac_noise
         self._ps_modeling_noise  = ps_modeling_noise if (ps_modeling_noise is not None) else self._frac_noise * self._power_spectrum
         self._astro_params       = self._astro_params
-        self._observation        = observation
 
         self._is_ps_sens_computed = False
-
-        self.compute_sensitivity(self._observation)
 
 
     def _save_ps_exp_noise(self, observation):
@@ -543,13 +544,13 @@ class Fiducial(Run):
                             k_bins              = self.k_bins)
             
 
-    def _load_ps_exp_noise(self, observation):
+    def _load_ps_exp_noise(self, observation_set):
 
         data   = None
 
         try:
 
-            with open(self._filename_exp_noise + '_' + observation + '.npz' , 'rb') as file: 
+            with open(self._filename_exp_noise + '_' + observation_set + '.npz' , 'rb') as file: 
                 data = np.load(file)
 
                 _z_array           = data['z_array']
@@ -571,7 +572,7 @@ class Fiducial(Run):
 
         except FileNotFoundError:
             if self._verbose is True:
-                print("No existing data found for " + self._observation + 'with this binning')
+                warnings.warn("No existing data found for " + observation_set + 'with this binning')
 
             return False
 
@@ -584,24 +585,13 @@ class Fiducial(Run):
         return self._astro_params
 
     @property
-    def observation(self):
-        return self._observation
-
-    @observation.setter
-    def observation(self, value):
-        _old_value = self._observation
-        if _old_value != value : 
-            self.compute_sensitivity(value)
-            self._observation = value
-
-    @property
     def frac_noise(self):
         return self._frac_noise
 
     @frac_noise.setter
     def frac_noise(self, value):
         if value != self._frac_noise:
-            print("Warning: frac noise and modeling noise have been changed, all related quantities should be recomputed")
+            warnings.warn("frac noise and modeling noise have been changed, all related quantities should be recomputed")
             self._frac_noise        = value
             self._ps_modeling_noise = self._frac_noise * self._power_spectrum
 
@@ -616,7 +606,8 @@ class Fiducial(Run):
     @ps_modeling_noise.setter
     def ps_modeling_noise(self, value):
         if value != self._ps_modeling_noise:
-            print("Warning: modeling noise has been changed, all related quantities should be recomputed")
+            warnings.warn("Modeling noise has been changed, all related quantities should be recomputed")
+            warnings.warn("Changind modeling noise directly is not advised, you should maybe change it through frac_noise")
             self._ps_modeling_noise = value
     
     @property
@@ -635,7 +626,10 @@ class Fiducial(Run):
     def compute_power_spectrum_sensitivity(self):
 
         # Get the Lightcone quantity
-        self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+        if PY21CMFAST:
+            self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+        else : 
+            ImportError("21cmFAST is needed to read new lightcones")
 
         # In order to compute the sensitivity we need the full range of z and k possible
         # We recompute a second power spectra for the sensitivity on a broader range
@@ -649,48 +643,58 @@ class Fiducial(Run):
         self._is_ps_sens_computed = True
 
 
-    def compute_sensitivity(self, observation):
 
-        valid_observatories = ['HERA']
+    def compute_sensitivity(self, observation_set = None, load = True, save = True):
 
-        if p21c_exp.PY21CMSENSE is False and observation in valid_observatories:
+        # Getting the name of the observation settings
+        obs_name = "default_HERA" if (observation_set is None) else observation_set.name
+
+        # Trying to load the senstivity from the observations sent
+        # Here we just need the name of the observation object
+        _load_succesfull = self._load_ps_exp_noise(obs_name) if load else False
+
+        if _load_succesfull:
+            print("Successfully loaded sensitivity for ", obs_name)
+            return
+
+        # If we cannot load then we need 21cmSense, make sure that we can find the module
+        if p21c_exp.PY21CMSENSE is False:
             raise ImportError("The module 21cmSense could not be imported or was not found, sensitivity cannot be computed")
+    
+        # if observation_set is None we initialise it to default HERA
+        _observation_set = p21c_exp.default_observation_set(self.z_array) if (observation_set is None) else observation_set
+        
+        assert (observation_set.observations is not None), ValueError("observations in ObservationSet must be a set of observations from 21cmSense")
+        assert (len(_observation_set.observations) == len(self.z_array)), ValueError("We must have one observation for each redshift bin") 
 
         _std = None
         self._ps_exp_noise = None
 
-        _load_succesfull = self._load_ps_exp_noise(observation) if (self._do_load is True) else False
+        # if the power spectrum is not computed we do compute it
+        if self._is_ps_sens_computed is False:
+            self.compute_power_spectrum_sensitivity()
 
-        if _load_succesfull is False:
+        _std = [p21c_exp.extract_noise_from_fiducial(self.k_array_sens[iz], self.power_spectrum_sens[iz], self.k_array, _observation_set.observations[iz]) for iz, _ in enumerate(self.z_array)]
 
-            # if the power spectrum is not computed we do compute it
-            if self._is_ps_sens_computed is False and observation in valid_observatories:
-                self.compute_power_spectrum_sensitivity()
-
-            if observation == 'HERA':
-                _std = [None] * len(self.z_array)
-                for iz, z in enumerate(self.z_array): 
-                    _hera     = p21c_exp.define_HERA_observation(z)
-                    _std[iz]  = p21c_exp.extract_noise_from_fiducial(self.k_array_sens[iz], self.power_spectrum_sens[iz], self.k_array, _hera)
-
-                self._ps_exp_noise = _std
-                
-                if self._do_save is True:
-                    self._save_ps_exp_noise(observation)
-
-        # everything went well and we reached the end
-        return True
-
+        self._ps_exp_noise = _std
+            
+        if save is True:
+            self._save_ps_exp_noise(_observation_set.name)
 
 
     
     def chi2_UV_luminosity_functions(self, data_set = 'Bouwens21', plot = True):
 
         z_uv, m_uv, l_uv, sigma_l_uv   = p21c_tools.load_uv_luminosity_functions(data_set)
-        m_uv_sim , _ , log10_l_uv_sim  = p21f.compute_luminosity_function(redshifts = z_uv, 
+        
+        if PY21CMFAST:
+            m_uv_sim , _ , log10_l_uv_sim  = p21f.compute_luminosity_function(redshifts = z_uv, 
                                                     user_params  = self._user_params, 
                                                     astro_params = self._astro_params, 
                                                     flag_options = self._flag_options)
+        else : 
+            ImportError("21cmFAST is needed to compute the UV luminosity functions")
+
         
         if plot is True:
             fig = p21c_tools.plot_func(m_uv_sim, 10**log10_l_uv_sim, ylog=True, xlim=[-14, -25], ylim =[1e-12, 1], xlabel=r'$M_{\rm UV}$', ylabel=r'$\phi_{\rm UV}$')
@@ -949,7 +953,6 @@ class Parameter:
             # evaluate the derivative as a gradient
             _der[iz] = np.gradient(_power_spectra_sorted, _params_sorted, axis=0)
 
-
         # arrange the derivative whether they are left, right or centred
         self._ps_derivative  = {'left' : None, 'right' : None, 'centred' : None}
 
@@ -986,7 +989,7 @@ class Parameter:
 
         # theoretical uncertainty from the simulation              
         ps_poisson_noise  = self._fiducial.ps_poisson_noise 
-        ps_modeling_noise = np.sqrt(self._fiducial.ps_modeling_noise**2 + (self._fiducial.frac_noise * self._fiducial.power_spectrum)**2)
+        ps_modeling_noise = self._fiducial.ps_modeling_noise
     
         
         # if fiducial as no standard deviation defined yet, return None
@@ -1085,13 +1088,13 @@ def evaluate_fisher_matrix(parameters):
     """
     ## Fisher matrix evaluator
 
-    Parameters:
-    -----------
+    Params:
+    -------
     parameters: array of Parameters objects
         parameters on which to compute the Fisher matrix
     
-    Return:
-    -------
+    Returns:
+    --------
     dictionnary with keys: 'matrix' for the matrix itself and 'name' for 
     the parameter names associated to the matrix in the same order
     """

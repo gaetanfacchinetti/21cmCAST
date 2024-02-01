@@ -1,5 +1,7 @@
 from .experiments import (
-    define_HERA_observation,
+    ObservationSet,
+    default_HERA_observatories,
+    default_observation_set,
     extract_noise_from_fiducial,
 )
 
