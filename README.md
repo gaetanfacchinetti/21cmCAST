@@ -1,6 +1,8 @@
 # 21cmCAST
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/py21cmcast)](https://pypi.org/project/py21cmcast/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 
 This package provides tools to perform Fisher fore**CAST**s from 21cmFAST outputs. It has been built on / complementarily to the [21cmFish](https://21cmfish.readthedocs.io/en/latest/) package[^1]. A detailed example of how it works can be found in [**scripts/exec/fisher.ipynb**](./scripts/exec/fisher.ipynb). 
 
