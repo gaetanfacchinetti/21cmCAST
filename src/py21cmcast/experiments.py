@@ -150,8 +150,11 @@ except ImportError:
 
     PY21CMSENSE = False
     
-    def define_HERA_observation(z):
+    def default_HERA_observatories(z_arr):
         return None
+    
+    def default_observation_set(z_arr):
+        return ObservationSet("default_HERA", None)
 
     def extract_noise_from_fiducial(k_in, dsqr_in, k_out, observation):
         return None
