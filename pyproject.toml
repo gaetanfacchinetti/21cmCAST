@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py21cmcast"
-version = "1.0.1"
+version = "1.0.2"
 description = "Fisher forecasts with 21cm experiments"
 readme = "README.md"
 authors = [{ name = "Gaétan Facchinetti", email = "gaetanfacc@gmail.com" }]
@@ -15,6 +15,9 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
 ]
 keywords = ["21cm", "fisher", "statistics", "cosmology"]
 dependencies = [

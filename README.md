@@ -2,6 +2,7 @@
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/py21cmcast)](https://pypi.org/project/py21cmcast/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Build Status](https://github.com/gaetanfacchinetti/21cmCAST/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/gaetanfacchinetti/21cmCAST/actions/workflows/CI.yml?query=branch%3Amain)
 
 
 This package provides tools to perform Fisher fore**CAST**s from 21cmFAST outputs. It has been built on / complementarily to the [21cmFish](https://21cmfish.readthedocs.io/en/latest/) package[^1]. A detailed example of how it works can be found in [**scripts/exec/fisher.ipynb**](./scripts/exec/fisher.ipynb). 
@@ -10,8 +11,28 @@ In order to work properly, the codes requires to have a working installation of
 - [**21cmFAST**](https://21cmfast.readthedocs.io/en/latest/)[^2][^3]
 - [**21cmSense**](https://21cmsense.readthedocs.io/en/latest/)[^4]
 
-If you are considering using this code for you own work, please cite
-- G. Facchinetti, L. Lopez-Honorez, A. Mesinger, Y. Qin (in prep.)
+If you are considering using this code, please cite the following work for which it has been developped
+- *G. Facchinetti, L. Lopez-Honorez, Y. Qin, A. Mesinger*, 21cm signal sensitivity to dark matter decay [[arXiv:2308.16656]](https://arxiv.org/abs/2308.16656)
+
+
+## Installation
+
+In order to install the code you can install it with pip running
+```
+pip install py21cmcast
+```
+In order to use and modify the code clone this repository and run
+```
+pip install -e .
+```
+in the main folder.
+
+## Quick start guide
+
+Examples on how to run the code are available [here](./examples/) along with an example of input config file.
+
+
+## Ongoing work
 
 To do list:
 - [x] rearrange the code in a self-contained package
