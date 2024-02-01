@@ -47,10 +47,16 @@ import configparser
 import os
 
 from py21cmcast import tools as p21c_tools
-import py21cmfast   as p21f
 import warnings
-
 import numpy as np
+
+try:
+    import py21cmfast as p21f
+except ImportError:
+    PY21CMFAST = False
+    p21f = None
+    warnings.warn("21cmFAST could not be found! 21cmCAST can work on cached data but will not be able to process any new lightcones.")
+
 
 
 def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = False, verbose = False) -> None :
@@ -364,17 +370,20 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
 
     try: 
 
-        lightcone = p21f.run_lightcone(
-                user_params          = user_params,
-                astro_params         = astro_params,
-                flag_options         = flag_options,
-                lightcone_quantities = lightcone_quantities,
-                global_quantities    = global_quantities,
-                direc                = cache_path, 
-                random_seed          = random_seed,
-                **extra_params,
-                **kwargs,
-            )
+        if PY21CMFAST:
+            lightcone = p21f.run_lightcone(
+                    user_params          = user_params,
+                    astro_params         = astro_params,
+                    flag_options         = flag_options,
+                    lightcone_quantities = lightcone_quantities,
+                    global_quantities    = global_quantities,
+                    direc                = cache_path, 
+                    random_seed          = random_seed,
+                    **extra_params,
+                    **kwargs,
+                )
+        else:
+            ImportError("Need 21cmFAST to run ligthcones")
         
     except Exception as e :
 
@@ -385,7 +394,10 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
 
     try: 
         # at the end, we clear the cache 
-        p21f.cache_tools.clear_cache(direc=cache_path)
+        if PY21CMFAST:
+            p21f.cache_tools.clear_cache(direc=cache_path)
+        else:
+            ImportError("Need 21cmFAST to run ligthcones")
         # delete the directory once it has been emptied
         os.rmdir(cache_path) 
     except FileNotFoundError:
