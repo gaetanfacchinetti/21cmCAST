@@ -1,0 +1,49 @@
+{% set name = "py21cmcast" %}
+{% set version = "1.0.2" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/py21cmcast-{{ version }}.tar.gz
+  sha256: ac4716cf9817bd9d11ef4a3217b5c6825c1f683f2dc716d6f28e21cb9dbc8cf4
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  host:
+    - python >=3.6
+    - setuptools >=61.0.0
+    - wheel
+    - pip
+  run:
+    - python >=3.6
+    - numpy >=1.16.5
+    - matplotlib-base >=3.4.3
+    - powerbox >=0.7.3
+    - configparser >=6.0.0
+    - astropy >=5.0.0
+    - scipy
+
+test:
+  imports:
+    - py21cmcast
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  summary: Fisher forecasts with 21cm experiments
+  license: GPL-3.0
+  license_file: LICENSE
+  home:
+    dev_url: https://github.com/gaetanfacchinetti/21cmCAST
+
+extra:
+  recipe-maintainers:
+    - gaetanfacchinetti
