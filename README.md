@@ -8,7 +8,7 @@
 
 [![Static Badge](https://img.shields.io/badge/physics-cosmology-darkblue)](https://en.wikipedia.org/wiki/Cosmology)
 [![Static Badge](https://img.shields.io/badge/physics-21cm-yellow)](https://en.wikipedia.org/wiki/Hydrogen_line)
-[![Static Badge](https://img.shields.io/badge/stats-fisher-green)](https://en.wikipedia.org/wiki/Fisher_information)
+[![Static Badge](https://img.shields.io/badge/stats-Fisher-green)](https://en.wikipedia.org/wiki/Fisher_information)
 
 
 
