@@ -50,6 +50,7 @@ from py21cmcast import tools as p21c_tools
 import warnings
 import numpy as np
 
+PY21CMFAST = True
 try:
     import py21cmfast as p21f
 except ImportError:
