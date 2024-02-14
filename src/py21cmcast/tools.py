@@ -53,10 +53,8 @@ import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
 import numpy as np
-import copy
 import os
 import shutil
-import json
 
 import copy
 
