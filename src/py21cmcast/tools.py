@@ -45,9 +45,11 @@
 
 
 
-from matplotlib.pyplot import *
-
+from matplotlib.gridspec import GridSpec
+from matplotlib.lines import Line2D
 from matplotlib.patches import Ellipse
+import matplotlib.cm as mplt_cm
+import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
 import numpy as np
@@ -330,6 +332,12 @@ _PARAMS_PLOT = {
     'DM_FHEAT_APPROX_PARAM_B'  : {'tex_name' : r'b', 'min': -2, 'max': 1,  'ticks' : []},
     'LOG10_XION_at_Z_HEAT_MAX' : {'tex_name' : r'\log_{10}[\bar x_e^{\rm init}]', 'min': -2, 'max': 1,  'ticks' : []},
     'LOG10_TK_at_Z_HEAT_MAX'   : {'tex_name' : r'\log_{10}[\frac{\bar T_K^{\rm init}}{\rm K}]', 'min': -2, 'max': 1,  'ticks' : []},
+    'OMm'   : {'tex_name' : r'\Omega_{\rm m}', 'min': -2, 'max': 1,  'ticks' : []},
+    'OMb'   : {'tex_name' : r'\Omega_{\rm b}', 'min': -2, 'max': 1,  'ticks' : []},
+    'hlittle'   : {'tex_name' : r'h', 'min': -2, 'max': 1,  'ticks' : []},
+    'SIGMA_8'   : {'tex_name' : r'\sigma_8', 'min': -2, 'max': 1,  'ticks' : []},
+    'POWER_INDEX'   : {'tex_name' : r'n_{\rm s}', 'min': -2, 'max': 1,  'ticks' : []},
+    'INVERSE_M_WDM'   : {'tex_name' : r'1/m_{\rm WDM}', 'min': -2, 'max': 1,  'ticks' : []},
     }
 
 
@@ -510,14 +518,14 @@ def fill_triangle_plot(covariance, fiducial_params, axs, **kwargs):
                     # Plot the gaussian approximation in that panel
                     sigma     = np.sqrt(covariance[i_name][i_name])
                     val_arr   = np.linspace(val_x-5*sigma, val_x+5*sigma, 100)
-                    gaussian  = exp(-(val_arr - val_x)**2/2./sigma**2)
+                    gaussian  = np.exp(-(val_arr - val_x)**2/2./sigma**2)
 
                     axs[i_name][i_name].plot(val_arr, gaussian, color=color)
 
 
 
 
-def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float = 0, **kwargs) :
+def plot_func_vs_z_and_k(z, k, func, std = None, istd  : float = 0, **kwargs) :
 
     """ 
         Function that plots the power spectra with the sensitivity bounds from extract_noise_from_fiducial()
@@ -551,16 +559,10 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
     if not isinstance(func[0][0], (list, np.ndarray)) :
         func = [func]
 
-    if func_err is None:
-        func_err = [None] * len(func)
-    else:
-        if not isinstance(func_err[0][0], (list, np.ndarray)) : 
-            func_err = [func_err]
-
 
     if len(func) > 1:
         
-        cmap = matplotlib.cm.get_cmap('Spectral')
+        cmap = mplt_cm.get_cmap('Spectral')
         a_lin = (0.99-0.2)/(len(func)-1) if len(func) > 1 else 1
         b_lin = 0.2 if len(func) > 1 else 0.5
 
@@ -582,8 +584,10 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
     markersize     = kwargs.get('markersize', None)
     
     no_line = Line2D([],[],color='k',linestyle='-',linewidth=0, alpha = 0) 
-  
 
+    # for the color of the fiducial to black
+    color_list[istd] = 'k'
+  
     iz = 0
     for i in range(0, n_lines):
         for j in range(0, 5):
@@ -604,10 +608,6 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
                                         marker=marker, markersize=markersize, markerfacecolor=color_list[jf], 
                                         linewidth=0.8)
                     
-                    if func_err[jf] is not None:
-                        axs[i][j].fill_between(k, f[iz] - func_err[jf][iz], f[iz] + func_err[jf][iz], 
-                                                color=color_list[jf], linestyle=linestyle_list[jf], 
-                                                step='mid', alpha=0.1)
                 
 
                 # Plot the standard deviation bars if standard deviation is given

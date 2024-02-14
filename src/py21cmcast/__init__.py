@@ -7,6 +7,7 @@ from .experiments import (
 
 from .runs import (
     init_runs,
+    init_grid_runs,
     make_config_one_varying_param,
     run_lightcone_from_config,
 )

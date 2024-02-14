@@ -44,6 +44,7 @@
 ##################################################################################
 
 import configparser
+from copy import deepcopy
 import os
 
 from py21cmcast import tools as p21c_tools
@@ -224,6 +225,109 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
         irun = irun + 1
     
     return 
+
+
+def init_grid_runs(config_file: str, clean_existing_dir: bool = False, verbose:bool = False) -> None:
+    
+    config = configparser.ConfigParser(delimiters=':')
+    config.optionxform = str
+
+    config.read(config_file)
+
+    name            = config.get('run', 'name')
+    output_dir      = config.get('run', 'output_dir')
+    cache_dir       = config.get('run', 'cache_dir')
+
+    output_run_dir = output_dir + "/" + name.upper() + "/"
+    existing_dir = p21c_tools.make_directory(output_run_dir, clean_existing_dir = clean_existing_dir)
+
+    if existing_dir is True:
+        print('WARNING: Cannot create a clean new folder because clean_existing_dir is False')
+        return 
+
+    try:
+        lightcone_q       = p21c_tools.read_config_params(config.items('lightcone_quantities'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section lightcone_quantities provided")
+        lightcone_q = {}
+
+    try:
+        global_q       = p21c_tools.read_config_params(config.items('global_quantities'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section global_quantities provided")
+        global_q = {}    
+
+
+
+    extra_params      = p21c_tools.read_config_params(config.items('extra_params'), int_type = False)
+    user_params       = p21c_tools.read_config_params(config.items('user_params'))
+    flag_options      = p21c_tools.read_config_params(config.items('flag_options'))
+    astro_params  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False, allow_lists=True)
+    cosmo_params  = p21c_tools.read_config_params(config.items('cosmo_params'), int_type = False, allow_lists=True)
+
+
+    all_indices = set()
+    params = []
+    values = []
+    for param_key, param_values in (astro_params | cosmo_params).items():
+        all_indices = indices_combinations(param_values, index_combinations=all_indices)
+        params.append(param_key)
+        values.append(param_values)
+
+    with open(output_run_dir + "/Database.txt", 'a') as file:
+
+        for iind, indexes in enumerate(all_indices):
+            astro_params_print = {}
+            cosmo_params_print = {}
+            for ival, i in enumerate(indexes):
+                if params[ival] in astro_params:
+                    astro_params_print = astro_params_print | {params[ival] :  values[ival][i]}
+                if params[ival] in cosmo_params:
+                    cosmo_params_print = cosmo_params_print | {params[ival] :  values[ival][i]}
+            
+            key = iind
+            p21c_tools.write_config_params(output_run_dir + '/Config_' + str(key) + ".config", name, output_run_dir, cache_dir, 
+                                    lightcone_q, global_q, extra_params, user_params, flag_options, astro_params_print, cosmo_params_print, str(key))
+
+            print(str(key) + ' : ' + str(astro_params_print) + ' | ' + str(cosmo_params_print), file=file)
+        file.close()
+    
+    print(str(len(all_indices)) + ' config files generated')
+
+
+
+def indices_combinations(*arrays, index_combinations=None):    
+    # Initialize index_combinations as an empty set for the first call
+    if index_combinations is None:
+        index_combinations = set()
+
+    # Base case: if there are no more arrays, return the current set of index combinations
+    if not arrays:
+        return index_combinations
+
+    # Extract the first array from the arguments
+    current_array = arrays[0]
+
+    # If this is the first array, initialize the index_combinations with its indices
+    if not index_combinations:
+        for i in range(len(current_array)):
+            index_combinations.add((i,))
+    else:
+        # Generate new combinations by combining each existing combination with indices of the current array
+        new_combinations = set()
+        for index_combination in index_combinations:
+            for i in range(len(current_array)):
+                new_combinations.add(index_combination + (i,))
+        index_combinations = new_combinations
+
+    # Recur with remaining arrays and the updated index_combinations
+    return indices_combinations(*arrays[1:], index_combinations=index_combinations)
+       
+
+    
+
 
 
 

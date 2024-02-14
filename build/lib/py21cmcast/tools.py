@@ -45,9 +45,11 @@
 
 
 
-from matplotlib.pyplot import *
-
+from matplotlib.gridspec import GridSpec
+from matplotlib.lines import Line2D
 from matplotlib.patches import Ellipse
+import matplotlib.cm as mplt_cm
+import matplotlib.pyplot as plt
 import matplotlib.transforms as transforms
 
 import numpy as np
@@ -560,7 +562,7 @@ def plot_func_vs_z_and_k(z, k, func, func_err = None, std = None, istd  : float 
 
     if len(func) > 1:
         
-        cmap = matplotlib.cm.get_cmap('Spectral')
+        cmap = mplt_cm.get_cmap('Spectral')
         a_lin = (0.99-0.2)/(len(func)-1) if len(func) > 1 else 1
         b_lin = 0.2 if len(func) > 1 else 0.5
 

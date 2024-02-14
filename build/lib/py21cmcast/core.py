@@ -360,8 +360,9 @@ class Run:
                 figname = self._dir_path + "/power_spectra/power_spectrum.pdf"
         
             fig.savefig(figname, bbox_layout='tight')
+            p21c_tools.close_figure(fig)
 
-        return fig
+        return
 
     @property
     def power_spectrum(self):
@@ -703,6 +704,7 @@ class Fiducial(Run):
 
             fig.gca().legend()
             fig.savefig(self._dir_path + '/global_quantities/UV_lum_func_FIDUCIAL.pdf', bbox_inches='tight')
+            p21c_tools.close_figure(fig)
 
         ## The chi2 is given by a sum on the elements where z > 6 (as we cannot trust 21cmFAST below)
 
@@ -730,6 +732,7 @@ class Fiducial(Run):
                                     xlabel=r'$z$',
                                     ylabel=r'$x_{\rm H_{I}}$')
         fig.savefig(self._dir_path + '/global_quantities/xH_FIDUCIAL.pdf', bbox_inches='tight')
+        p21c_tools.close_figure(fig)
 
 
     def plot_global_signal(self):
@@ -737,6 +740,7 @@ class Fiducial(Run):
                                     xlabel=r'$z$',
                                     ylabel=r'$\overline{T_{\rm b}}~\rm [mK]$')
         fig.savefig(self._dir_path + '/global_quantities/global_signal_FIDUCIAL.pdf', bbox_inches='tight')
+        p21c_tools.close_figure(fig)
 
 
 
@@ -744,7 +748,7 @@ class Fiducial(Run):
 
 class Parameter:
 
-    def __init__(self, fiducial, name, plot = True, verbose = True, **kwargs):
+    def __init__(self, fiducial, name, plot = True, verbose = True, values = None, **kwargs):
         
         self._fiducial       = fiducial
         self._name           = name
@@ -761,7 +765,7 @@ class Parameter:
         self._verbose        = verbose
 
         # Additional parameters to specify the value of the parameter
-        self._values         =  kwargs.get('values', None)
+        self._values         =  values
         self._add_name       =  kwargs.get('add_name', '')
         
         if self._add_name != '':
@@ -890,9 +894,19 @@ class Parameter:
             
         # Plotting the derivatives
         if self._plot is True:
-            self.plot_ps_derivative()
-            self.plot_weighted_ps_derivative()
-            self.plot_power_spectra()
+
+            fig_der = self.plot_ps_derivative()
+            fig_w_der = self.plot_weighted_ps_derivative()
+            fig_ps = self.plot_power_spectra()
+
+            fig_der.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._add_name + ".pdf")
+            fig_w_der.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._add_name + ".pdf")
+            fig_ps.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._add_name + ".pdf")
+
+            p21c_tools.close_figure(fig_der)
+            p21c_tools.close_figure(fig_w_der)
+            p21c_tools.close_figure(fig_ps)
+            
 
     @property
     def ps_derivative(self):
@@ -1039,7 +1053,6 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._add_name + ".pdf")
         return fig
 
 
@@ -1063,7 +1076,6 @@ class Parameter:
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
                                                 xlog=self._logk, ylog=True, istd = _order[0], **kwargs)
 
-        fig.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._add_name + ".pdf")
         return fig
 
 
@@ -1078,7 +1090,7 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{1}{\sigma}\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._add_name + ".pdf")
+     
         return fig
 
 

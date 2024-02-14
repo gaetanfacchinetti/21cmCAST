@@ -111,7 +111,7 @@ class Run:
     """
 
     def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list = None, z_array : list = None, 
-                k_bins : list = None, logk : bool = False, p : float = 0., load : bool = True, save : bool = True, 
+                k_bins : list = None, logk : bool = False, p : float = 0., *, lightcone = None, load : bool = True, save : bool = True, 
                  verbose : bool  = True) -> None: 
         """
         Parameters
@@ -119,7 +119,7 @@ class Run:
         dir_path : str
             Path to the directory where the lightcone is saved
         lightcone_name : str
-            Name of the lightcone file
+            Name of the lightcone file to work with
         z_bins : list
             Array of redshift bin edges
         z_centers : list
@@ -130,6 +130,9 @@ class Run:
             Indicates that the k mode edges are logarithmically distributed
         p : float, optional
             Associated value of the parameter associated to the run
+        lightcone: lightcone object, optional
+            21cmFAST lightcone object if not None, the lightcone is not 
+            defined from `lightcone_name` but from this lightcone object
         load : bool, optional
             When True, first search for a cached precomputed tables of
             the quantities derived in the class (power_spectrum, noise, etc.)
@@ -185,8 +188,8 @@ class Run:
                 else:
                     print("recomputing the tables with the new bins")
 
-            if (z_bins is None or k_bins is None or z_array is None) and _load_successfull is False:
-                raise ValueError("Need to pass z_bins and k_bins as inputs")
+            #if (z_bins is None or k_bins is None or z_array is None) and _load_successfull is False:
+            #    raise ValueError("Need to pass z_bins and k_bins as inputs")
 
 
         if load is False or _load_successfull is False or _params_match is False:
@@ -198,10 +201,13 @@ class Run:
             self._p         = p
 
             # Get the power spectrum from the Lightcone
-            if PY21CMFAST:
-                self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
-            else : 
-                ImportError("21cmFAST is needed to read new lightcones")
+            if lightcone is not None:
+                self._lightcone = lightcone
+            else:  
+                if PY21CMFAST:
+                    self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+                else : 
+                    ImportError("21cmFAST is needed to read new lightcones")
 
             self._astro_params = dict(self._lightcone.astro_params.self)
             self._user_params  = dict(self._lightcone.user_params.self)
@@ -217,8 +223,10 @@ class Run:
                 try: 
                     self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
                 except:
-                    warnings.warn("Impossible to compute the optical depth to reionization tau_ion")
                     self._tau_ion = 0.0
+                    if self._verbose:
+                        warnings.warn("Impossible to compute the optical depth to reionization tau_ion")
+                    
             else : 
                 ImportError("21cmFAST is needed to evaluate the optical depth to reionization")
 
@@ -228,18 +236,37 @@ class Run:
 
     def _get_power_spectra(self):
 
-        self._lc_redshifts        = self._lightcone.lightcone_redshifts
-        self._chunk_indices       = [np.argmin(np.abs(self._lc_redshifts - z)) for z in self._z_bins]
-        _, _data_arr  = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, 
-                                                                n_psbins=self._k_bins.value, logk=self._logk, 
-                                                                remove_nans=False, vb=False)
-        
-        self._power_spectrum   = np.array([data['delta'] for data in _data_arr])
-        self._ps_poisson_noise = np.array([data['err_delta'] for data in _data_arr])
+        if ((self._z_bins is None) or (self._z_bins == np.array([]))
+            or (self._k_bins is None) or (self._k_bins == np.array([]))
+            or (self._z_array is None) or (self._z_array == np.array([]))):
+            
+            if self._verbose:
+                warnings.warn("Impossible to compute the power spectra as bins are missing")
+            
+            self._power_spectrum = np.array([])
+            self._ps_poisson_noise = np.array([])
+            self._k_array = np.array([])
+            self._chunk_indices = np.array([])
 
-        _k_array = np.array([data['k'] for data in _data_arr])
-        assert np.all(np.abs(np.diff(_k_array, axis=0)[0]/_k_array) <= 1e-3)
-        self._k_array = _k_array[0]
+        try:
+
+            self._lc_redshifts        = self._lightcone.lightcone_redshifts
+            self._chunk_indices       = [np.argmin(np.abs(self._lc_redshifts - z)) for z in self._z_bins]
+            _, _data_arr  = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, 
+                                                                    n_psbins=self._k_bins.value, logk=self._logk, 
+                                                                    remove_nans=False, vb=False)
+            
+            self._power_spectrum   = np.array([data['delta'] for data in _data_arr])
+            self._ps_poisson_noise = np.array([data['err_delta'] for data in _data_arr])
+
+            _k_array = np.array([data['k'] for data in _data_arr])
+            assert np.all(np.abs(np.diff(_k_array, axis=0)[0]/_k_array) <= 1e-3)
+            self._k_array = _k_array[0]
+
+        except Exception as e:
+            if self._verbose:
+                warnings.warn("Impossible to compute the power spectra: \n" + str(e))
+
 
     
     def _get_global_quantities(self):
@@ -277,10 +304,10 @@ class Run:
                             x_e_box           = self.x_e_box,
                             Ts_box            = self.Ts_box,
                             Tk_box            = self.Tk_box,
-                            z_array           = self.z_array,
+                            z_array           = self.z_array if self.z_array is not None else np.array([]),
+                            z_bins            = self.z_bins  if self.z_bins is not None else np.array([]),
+                            k_bins            = self.k_bins  if self.k_bins is not None else np.array([]),
                             k_array           = self.k_array,
-                            z_bins            = self.z_bins,
-                            k_bins            = self.k_bins,
                             z_glob            = self.z_glob, 
                             tau_ion           = self.tau_ion)
         
@@ -338,7 +365,7 @@ class Run:
 
         except FileNotFoundError:
             if self._verbose is True:
-                print("No existing data found for " + self._name)
+                print("No existing cached data found for " + self._name)
             
             return False
         
@@ -350,8 +377,7 @@ class Run:
             error = np.sqrt(self.ps_poisson_noise**2 + self.ps_modeling_noise**2)
 
         fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, self.power_spectrum, 
-                                                func_err = error,
-                                                std = std, title=r'$\Delta_{21}^2 ~{\rm [mK^2]}$', 
+                                                std = error, title=r'$\Delta_{21}^2 ~{\rm [mK^2]}$', 
                                                 xlim = [self._k_bins[0].value, self._k_bins[-1].value], xlog=self._logk, ylog=True)
         
         if plot is True : 
@@ -360,8 +386,9 @@ class Run:
                 figname = self._dir_path + "/power_spectra/power_spectrum.pdf"
         
             fig.savefig(figname, bbox_layout='tight')
+            p21c_tools.close_figure(fig)
 
-        return fig
+        return
 
     @property
     def power_spectrum(self):
@@ -524,7 +551,7 @@ class Fiducial(Run):
         self._rs   = _file_name.split('_')[-2][2:]
 
         # Initialise the parent object
-        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, load=load, save=save, verbose = verbose)
+        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, 0., lightcone = None, load=load, save=save, verbose = verbose)
         
         # Getting the noise associated to the fiducial
         self._frac_noise         = frac_noise
@@ -664,7 +691,7 @@ class Fiducial(Run):
         # if observation_set is None we initialise it to default HERA
         _observation_set = p21c_exp.default_observation_set(self.z_array) if (observation_set is None) else observation_set
         
-        assert (observation_set.observations is not None), ValueError("observations in ObservationSet must be a set of observations from 21cmSense")
+        assert (_observation_set.observations is not None), ValueError("observations in ObservationSet must be a set of observations from 21cmSense")
         assert (len(_observation_set.observations) == len(self.z_array)), ValueError("We must have one observation for each redshift bin") 
 
         _std = None
@@ -703,6 +730,7 @@ class Fiducial(Run):
 
             fig.gca().legend()
             fig.savefig(self._dir_path + '/global_quantities/UV_lum_func_FIDUCIAL.pdf', bbox_inches='tight')
+            p21c_tools.close_figure(fig)
 
         ## The chi2 is given by a sum on the elements where z > 6 (as we cannot trust 21cmFAST below)
 
@@ -730,6 +758,7 @@ class Fiducial(Run):
                                     xlabel=r'$z$',
                                     ylabel=r'$x_{\rm H_{I}}$')
         fig.savefig(self._dir_path + '/global_quantities/xH_FIDUCIAL.pdf', bbox_inches='tight')
+        p21c_tools.close_figure(fig)
 
 
     def plot_global_signal(self):
@@ -737,6 +766,7 @@ class Fiducial(Run):
                                     xlabel=r'$z$',
                                     ylabel=r'$\overline{T_{\rm b}}~\rm [mK]$')
         fig.savefig(self._dir_path + '/global_quantities/global_signal_FIDUCIAL.pdf', bbox_inches='tight')
+        p21c_tools.close_figure(fig)
 
 
 
@@ -744,7 +774,7 @@ class Fiducial(Run):
 
 class Parameter:
 
-    def __init__(self, fiducial, name, plot = True, verbose = True, **kwargs):
+    def __init__(self, fiducial, name, plot = True, verbose = True, values = None, **kwargs):
         
         self._fiducial       = fiducial
         self._name           = name
@@ -761,7 +791,7 @@ class Parameter:
         self._verbose        = verbose
 
         # Additional parameters to specify the value of the parameter
-        self._values         =  kwargs.get('values', None)
+        self._values         =  values
         self._add_name       =  kwargs.get('add_name', '')
         
         if self._add_name != '':
@@ -844,8 +874,7 @@ class Parameter:
         self._p_value = np.sort(self._p_value)
 
         # Check that the p_values are consistant
-        _param_fid = self._astro_params[self._name]
-        assert len(self._p_value) == 1 or (len(self._p_value) == 2 and ((self._p_value[0] - _param_fid) * (self._p_value[1] - _param_fid)) < 0), "p_value : " + str(self._p_value)
+        assert len(self._p_value) == 1 or (len(self._p_value) == 2 and ((self._p_value[0] - self._param_fid) * (self._p_value[1] - self._param_fid)) < 0), "p_value : " + str(self._p_value)
 
         if verbose is True: 
             print("------------------------------------------")
@@ -890,9 +919,19 @@ class Parameter:
             
         # Plotting the derivatives
         if self._plot is True:
-            self.plot_ps_derivative()
-            self.plot_weighted_ps_derivative()
-            self.plot_power_spectra()
+
+            fig_der = self.plot_ps_derivative()
+            fig_w_der = self.plot_weighted_ps_derivative()
+            fig_ps = self.plot_power_spectra()
+
+            fig_der.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._add_name + ".pdf")
+            fig_w_der.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._add_name + ".pdf")
+            fig_ps.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._add_name + ".pdf")
+
+            p21c_tools.close_figure(fig_der)
+            p21c_tools.close_figure(fig_w_der)
+            p21c_tools.close_figure(fig_ps)
+
 
     @property
     def ps_derivative(self):
@@ -1039,31 +1078,27 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives/derivatives_" + self._name + self._add_name + ".pdf")
         return fig
 
 
     def plot_power_spectra(self, **kwargs):
 
         _ps        = [self._fiducial.power_spectrum]
-        _ps_errors = [self._fiducial.ps_poisson_noise]
         _p_vals    = [self._param_fid]
 
         for run in self._runs:
             _ps.append(run.power_spectrum)
-            _ps_errors.append(run.ps_poisson_noise)
             _p_vals.append(run.p)
 
         _order     = np.argsort(_p_vals)
         _ps        = np.array(_ps)[_order]
-        _ps_errors = np.array(_ps_errors)[_order]
 
-        fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, _ps, func_err = _ps_errors, 
-                                                std = self._fiducial.ps_exp_noise, 
+        error_std = np.sqrt(self._fiducial.ps_exp_noise**2 + self._fiducial.ps_poisson_noise**2 + self.fiducial.ps_modeling_noise**2)
+
+        fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, _ps, std = error_std,
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
                                                 xlog=self._logk, ylog=True, istd = _order[0], **kwargs)
 
-        fig.savefig(self._dir_path + "/power_spectra/power_spectra_" + self._name + self._add_name + ".pdf")
         return fig
 
 
@@ -1078,7 +1113,7 @@ class Parameter:
         fig = p21c_tools.plot_func_vs_z_and_k(self._z_array, self._k_array, der_array, marker='.', markersize=2, 
                                                 title=r'$\frac{1}{\sigma}\frac{\partial \Delta_{21}^2}{\partial ' + self._tex_name + r'}$', 
                                                 xlim = [0.1, 1], xlog=self._logk, ylog=False)
-        fig.savefig(self._dir_path + "/derivatives/weighted_derivatives_" + self._name + self._add_name + ".pdf")
+     
         return fig
 
 
