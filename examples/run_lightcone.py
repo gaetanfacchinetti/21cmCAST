@@ -7,7 +7,7 @@ parser.add_argument("config_file", type = str, help="Path to config file")
 parser.add_argument("-nomp", "--n_omp", type = int, help="number of OMP threads available")
 parser.add_argument("-nruns", "--n_runs", type = int, help="number of times to run the code < 25")
 parser.add_argument("-rs", "--random_seed", type = int, help="the first random seed of the runs")
-parser.add_argument("-pp", "--pre_process", help = "pre-process the lightcone and only extract part of the data in the cache", action = 'store_false')
+parser.add_argument("-pp", "--pre_process", help = "pre-process the lightcone and only extract part of the data in the cache", action = 'store_true')
 args = parser.parse_args()
 
 config_file   = args.config_file
