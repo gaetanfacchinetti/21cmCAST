@@ -14,7 +14,7 @@ config_file   = args.config_file
 n_omp         = args.n_omp       if (args.n_omp       is not None) else 1
 n_runs        = args.n_runs      if (args.n_runs      is not None) else 1
 random_seed   = args.random_seed if (args.random_seed is not None) else None
-preprocess    = args.pre_process
+preprocess    = args.pre_process 
 
 # Run the lightcone with the given seed
 lightcone, run_id, output_dir = p21c.run_lightcone_from_config(config_file, n_omp, random_seed)
