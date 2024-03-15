@@ -33,6 +33,7 @@ from .power import (
 
 from .core import (
     evaluate_fisher_matrix,
+    print_tau_ion_var,
     Fiducial,
     Run,
     CombinedRuns,

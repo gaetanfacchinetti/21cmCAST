@@ -912,6 +912,7 @@ class Parameter:
             print("Computing the derivatives of " + self._name)
 
         self.compute_ps_derivative()
+        self.compute_tau_ion_derivative()
 
         if verbose is True: 
             print("Derivative of " + self._name  + " computed")
@@ -1008,6 +1009,51 @@ class Parameter:
 
         
 
+    def compute_tau_ion_derivative(self):
+
+        _der = [None] * len(self._z_array)
+        
+        #_param_fid = self._astro_params[self._name]
+
+        # get all the parameters and sort them
+        _params = np.zeros(len(self._runs))
+
+        for irun, run in enumerate(self._runs):
+            _params[irun] = run.p
+
+        _params         = np.append(_params, self._param_fid)
+        _params_sorted  = np.sort(_params)
+        _mixing_params  = np.argsort(_params)
+
+
+        # loop over all the redshift bins
+    
+        # get an array of power spectra in the same order as the parameters
+        _tau_ion = [run.tau_ion for run in self._runs]
+        _tau_ion.append(self._fiducial.tau_ion)
+
+        # rearrange the power spectra in the same order of the parameters
+        _tau_ion_sorted = np.array(_tau_ion)[_mixing_params]        
+
+        # evaluate the derivative as a gradient
+        _der = np.gradient(_tau_ion_sorted, _params_sorted, axis=0)
+
+        # arrange the derivative whether they are left, right or centred
+        self._tau_ion_derivative  = {'left' : None, 'right' : None, 'centred' : None}
+
+        if len(self._p_value) == 2:
+            self._tau_ion_derivative['left']    = _der[0]
+            self._tau_ion_derivative['centred'] = _der[1]
+            self._tau_ion_derivative['right']   = _der[2]
+
+        if len(self._p_value) == 1 and self._p_value[0] < 0 :
+            self._tau_ion_derivative['left'] = _der[0]
+        
+        if len(self._p_value) == 1 and self._p_value[0] > 0 :
+            self._tau_ion_derivative['right'] = _der[0]
+
+
+
     def weighted_ps_derivative(self, kind: str ='centred'):
        
         """
@@ -1066,6 +1112,41 @@ class Parameter:
 
         # We sum (quadratically) the two errors
         return der / np.sqrt(ps_exp_noise**2 + ps_poisson_noise**2 + ps_modeling_noise**2)  
+    
+
+    def tau_ion_derivative(self, kind:str = 'centred'):
+        
+         # Initialize the derivative array to None
+        der = None
+
+        # If two sided derivative is asked then we are good here
+        if kind == 'centred' :
+            der = self._tau_ion_derivative.get('centred', None)
+        
+        # Value to check if we use the one sided derivative 
+        # by choice or because we cannot use the two-sided one
+        _force_to_one_side = False
+
+        # If there is no centred derivative
+        if der is None or kind == 'left':
+            if der is None and kind != 'left' and kind != 'right': 
+                # Means that we could not read a value yet 
+                # but not that we chose to use the left
+                _force_to_one_side = True
+            der = self._tau_ion_derivative.get('left', None)
+        
+        if der is None or kind == 'right':
+            if der is None and kind != 'right' and kind != 'left': 
+                # Means that we could not read a value yet 
+                # but not that we chose to use the right
+                _force_to_one_side = True
+            der = self._tau_ion_derivative.get('right', None)
+
+        if _force_to_one_side is True and self._verbose is True:
+            print("Weighted derivative computed from the one_sided derivative")
+
+        return der
+    
 
 
     def plot_ps_derivative(self):
@@ -1152,7 +1233,24 @@ def evaluate_fisher_matrix(parameters):
     return {'matrix' : fisher_matrix, 'name' : name_arr}
     
 
-    
+
+def print_tau_ion_var(params):
+
+    der = []
+    fid = []
+
+    res = ""
+
+    for ip, param in enumerate(params):
+        der = param.tau_ion_derivative()
+        fid = param._param_fid
+        name = param.name
+
+        sign = "+" if np.sign(der) > 0 else "-"
+
+        res = res + sign + str(np.abs(der)) + "(" + name + "/" + str(fid) + ")" 
+
+    return res
 
 
 
