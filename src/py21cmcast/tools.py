@@ -336,6 +336,7 @@ _PARAMS_PLOT = {
     'SIGMA_8'   : {'tex_name' : r'\sigma_8', 'min': -2, 'max': 1,  'ticks' : []},
     'POWER_INDEX'   : {'tex_name' : r'n_{\rm s}', 'min': -2, 'max': 1,  'ticks' : []},
     'INVERSE_M_WDM'   : {'tex_name' : r'1/m_{\rm WDM}', 'min': -2, 'max': 1,  'ticks' : []},
+    'NEUTRINO_MASS_1'   : {'tex_name' : r'\sum m_\nu / 3', 'min': -2, 'max': 1,  'ticks' : []},
     }
 
 
@@ -723,6 +724,12 @@ def prepare_2subplots(gridspec_kw = None, **kwargs) :
     return fig, (ax1, ax2)
 
 
+
+
+def close_figure(fig):
+    """ close the figure fig """
+    plt.close(fig)
+    
 
 
 def plot_func(x, func, **kwargs) :
