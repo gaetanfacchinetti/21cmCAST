@@ -1242,8 +1242,8 @@ def print_tau_ion_var(params):
     res = ""
 
     for ip, param in enumerate(params):
-        der = param.tau_ion_derivative()
         fid = param._param_fid
+        der = param.tau_ion_derivative() * fid
         name = param.name
 
         sign = "+" if np.sign(der) > 0 else "-"
