@@ -24,6 +24,8 @@ from .tools import (
     prepare_plot,
     prepare_2subplots,
     prepare_triangle_plot,
+    confidence_ellipse,
+    ellipse_from_covariance,
 )
 
 from .power import (

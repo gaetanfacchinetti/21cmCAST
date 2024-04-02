@@ -117,6 +117,7 @@ def read_config_params(config_items, int_type = True, allow_lists = False):
                 else:
                     cast_val = float(value)
         except:
+                
             if value == 'True':
                 cast_val =  True
             elif value == 'False':
@@ -332,11 +333,14 @@ _PARAMS_PLOT = {
     'LOG10_TK_at_Z_HEAT_MAX'   : {'tex_name' : r'\log_{10}[\frac{\bar T_K^{\rm init}}{\rm K}]', 'min': -2, 'max': 1,  'ticks' : []},
     'OMm'   : {'tex_name' : r'\Omega_{\rm m}', 'min': -2, 'max': 1,  'ticks' : []},
     'OMb'   : {'tex_name' : r'\Omega_{\rm b}', 'min': -2, 'max': 1,  'ticks' : []},
+    'Omch2'   : {'tex_name' : r'\Omega_{\rm c}h^2', 'min': -2, 'max': 1,  'ticks' : []},
+    'Ombh2'   : {'tex_name' : r'\Omega_{\rm b}h^2', 'min': -2, 'max': 1,  'ticks' : []},
     'hlittle'   : {'tex_name' : r'h', 'min': -2, 'max': 1,  'ticks' : []},
+    'Ln_1010_As'   : {'tex_name' : r'\ln(10^{10} A_{\rm s})', 'min': -2, 'max': 1,  'ticks' : []},
     'SIGMA_8'   : {'tex_name' : r'\sigma_8', 'min': -2, 'max': 1,  'ticks' : []},
     'POWER_INDEX'   : {'tex_name' : r'n_{\rm s}', 'min': -2, 'max': 1,  'ticks' : []},
     'INVERSE_M_WDM'   : {'tex_name' : r'1/m_{\rm WDM}', 'min': -2, 'max': 1,  'ticks' : []},
-    'NEUTRINO_MASS_1'   : {'tex_name' : r'\sum m_\nu / 3', 'min': -2, 'max': 1,  'ticks' : []},
+    'NEUTRINO_MASS_1'   : {'tex_name' : r'm_{\nu, 1} ~ [{\rm eV}]', 'min': -2, 'max': 1,  'ticks' : []},
     }
 
 
@@ -433,7 +437,9 @@ def prepare_triangle_plot(params_to_plot, val_min, val_max):
 
                 axs[j_name][i_name].set_xlim([x_min, x_max])
 
-                if i != j :     
+                if i != j :   
+                    if y_min == np.NaN or y_min == np.Inf or y_max == np.NaN or y_max == np.Inf:
+                        print("Problem here: ", j_name, " ", i_name)
                     axs[j_name][i_name].set_ylim([y_min, y_max])
 
                 if i == j :

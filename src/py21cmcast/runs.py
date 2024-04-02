@@ -449,6 +449,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     astro_params    = p21c_tools.read_config_params(config.items('astro_params'), int_type=False)
     cosmo_params    = p21c_tools.read_config_params(config.items('cosmo_params'), int_type=False)
 
+
     # manually set the number of threads
     if n_omp is not None: 
         user_params['N_THREADS'] = int(n_omp)
