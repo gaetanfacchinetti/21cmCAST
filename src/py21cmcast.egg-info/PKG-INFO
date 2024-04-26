@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: py21cmcast
-Version: 1.0.2
+Version: 1.0.4
 Summary: Fisher forecasts with 21cm experiments
 Author-email: Gaétan Facchinetti <gaetanfacc@gmail.com>
 License:                     GNU GENERAL PUBLIC LICENSE

@@ -221,7 +221,10 @@ class Run:
             # Compute the optical depth to reionization
             if PY21CMFAST:
                 try: 
-                    self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+                    if np.all(self._xHIIdb == 0):
+                        self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = self.xH_box, user_params=self._user_params, cosmo_params=self._cosmo_params)
+                    else:
+                        self._tau_ion = p21f.compute_tau(redshifts=self._z_glob, global_xHI = 1-self._xHIIdb, user_params=self._user_params, cosmo_params=self._cosmo_params)
                 except:
                     self._tau_ion = 0.0
                     if self._verbose:
@@ -264,6 +267,12 @@ class Run:
             self._k_array = _k_array[0]
 
         except Exception as e:
+
+            self._power_spectrum = np.array([])
+            self._ps_poisson_noise = np.array([])
+            self._k_array = np.array([])
+            self._chunk_indices = np.array([])
+            
             if self._verbose:
                 warnings.warn("Impossible to compute the power spectra: \n" + str(e))
 
@@ -276,15 +285,22 @@ class Run:
   
         _global_signal = self._lightcone.global_quantities.get('brightness_temp', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _xH_box        = self._lightcone.global_quantities.get('xH_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _xHIIdb        = self._lightcone.global_quantities.get('xHIIdb', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _x_e_box       = self._lightcone.global_quantities.get('x_e_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _Ts_box        = self._lightcone.global_quantities.get('Ts_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _Tk_box        = self._lightcone.global_quantities.get('Tk_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
 
+        # constrain the value of the ionization fraction between 0 and 1
+        _xHIIdb[ _xHIIdb > 1.0 ] = 1.0
+        _xHIIdb[ _xHIIdb < 0.0 ] = 0.0
+
         self._global_signal = interpolate.interp1d(_lc_glob_redshifts, _global_signal)(self._z_glob)
         self._xH_box        = interpolate.interp1d(_lc_glob_redshifts, _xH_box)(self._z_glob)
+        self._xHIIdb        = interpolate.interp1d(_lc_glob_redshifts, _xHIIdb)(self._z_glob)
         self._x_e_box       = interpolate.interp1d(_lc_glob_redshifts, _x_e_box)(self._z_glob)
         self._Ts_box        = interpolate.interp1d(_lc_glob_redshifts, _Ts_box)(self._z_glob)
         self._Tk_box        = interpolate.interp1d(_lc_glob_redshifts, _Tk_box)(self._z_glob)
+
 
 
     def _save(self):
@@ -301,6 +317,7 @@ class Run:
                             global_signal     = self.global_signal,
                             chunk_indices     = self.chunk_indices,
                             xH_box            = self.xH_box,
+                            xHIIdb            = self.xHIIdb,
                             x_e_box           = self.x_e_box,
                             Ts_box            = self.Ts_box,
                             Tk_box            = self.Tk_box,
@@ -344,6 +361,7 @@ class Run:
                 self._k_bins            = data['k_bins']  / units.Mpc
                 self._global_signal     = data['global_signal']
                 self._xH_box            = data['xH_box']
+                self._xHIIdb            = data['xHIIdb']
                 self._x_e_box           = data.get('x_e_box', None)
                 self._Ts_box            = data.get('Ts_box', None)
                 self._Tk_box            = data.get('Tk_box', None)
@@ -409,6 +427,10 @@ class Run:
     @property
     def x_e_box(self):
         return self._x_e_box
+    
+    @property
+    def xHIIdb(self):
+        return self._xHIIdb
     
     @property
     def Ts_box(self):

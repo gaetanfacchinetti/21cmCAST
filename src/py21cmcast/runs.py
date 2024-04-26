@@ -50,6 +50,7 @@ import os
 from py21cmcast import tools as p21c_tools
 import warnings
 import numpy as np
+import random
 
 PY21CMFAST = True
 try:
@@ -326,6 +327,118 @@ def indices_combinations(*arrays, index_combinations=None):
     return indices_combinations(*arrays[1:], index_combinations=index_combinations)
        
 
+    
+
+def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, clean_existing_dir: bool = False, verbose:bool = False) -> None:
+    
+    config = configparser.ConfigParser(delimiters=':')
+    config.optionxform = str
+
+    config.read(config_file)
+
+    name            = config.get('run', 'name')
+    output_dir      = config.get('run', 'output_dir')
+    cache_dir       = config.get('run', 'cache_dir')
+
+    output_run_dir = output_dir + "/" + name.upper() + "/"
+    existing_dir = p21c_tools.make_directory(output_run_dir, clean_existing_dir = clean_existing_dir)
+
+    if existing_dir is True:
+        print('WARNING: Cannot create a clean new folder because clean_existing_dir is False')
+        return 
+
+    try:
+        lightcone_q       = p21c_tools.read_config_params(config.items('lightcone_quantities'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section lightcone_quantities provided")
+        lightcone_q = {}
+
+    try:
+        global_q       = p21c_tools.read_config_params(config.items('global_quantities'))
+    except configparser.NoSectionError:
+        if verbose: 
+            warnings.warn("No section global_quantities provided")
+        global_q = {}    
+
+
+    extra_params  = p21c_tools.read_config_params(config.items('extra_params'), int_type = False)
+    user_params   = p21c_tools.read_config_params(config.items('user_params'))
+    flag_options  = p21c_tools.read_config_params(config.items('flag_options'))
+    astro_params  = p21c_tools.read_config_params(config.items('astro_params'), int_type = False, allow_lists=True)
+    cosmo_params  = p21c_tools.read_config_params(config.items('cosmo_params'), int_type = False, allow_lists=True)
+
+
+    params_astro = []
+    params_cosmo = []
+    draws  = []
+
+    # set the random seed
+    random.seed(random_seed)
+
+    for i in range(0, n_sample): 
+
+        # Initialise the parameters
+        params_astro.append({ k : 0 for k in astro_params.keys()})
+        params_cosmo.append({ k : 0 for k in cosmo_params.keys()})
+        draws.append({ k : -1 for k in (astro_params | cosmo_params).keys()})
+
+        for param_key, param_values in (astro_params | cosmo_params).items():
+
+            # if the user enters a wrong input table
+            assert(len(param_values) < 3), "For random generator, can only define min and max values."
+
+            # parameter to randomly draw between min and max values
+            if len(param_values) == 2:
+                u = random.random()
+                if param_key in astro_params:
+                    params_astro[i][param_key] = (param_values[1] - param_values[0])*u  + param_values[0]
+                if param_key in cosmo_params:
+                    params_cosmo[i][param_key] = (param_values[1] - param_values[0])*u  + param_values[0]
+                draws[i][param_key] = u
+
+            # parameter fixed at a given value
+            if len(param_values) == 1:
+                if param_key in astro_params:
+                    params_astro[i][param_key] = param_values[0]
+                if param_key in cosmo_params:
+                    params_cosmo[i][param_key] = param_values[0]
+
+                # remove the parameter in the dictionnary of draws as nothing is drawn for that parameter
+                draws[i].pop(param_key)
+            
+        
+    with open(output_run_dir + "/Database.txt", 'a') as file:
+
+        print("# random seed = " + str(random_seed), file=file)
+
+        for i in range(0, n_sample): 
+            p21c_tools.write_config_params(output_run_dir + '/Config_' + str(i) + ".config", name, output_run_dir, cache_dir, 
+                                    lightcone_q, global_q, extra_params, user_params, flag_options, params_astro[i], params_cosmo[i], str(i))
+
+            print(str(i) + ' : ' + str(params_astro[i] | params_cosmo[i]), file=file)
+        
+        file.close()
+
+    with open(output_run_dir + "Database.npz", 'wb') as file:
+        np.savez(file, params_astro = params_astro, params_cosmo = params_cosmo, random_seed = random_seed)
+        file.close()
+
+    # Create a file containing the uniform distributions
+    with open(output_run_dir + "/Uniform.txt", 'a') as file:
+
+        print("# random seed = " + str(random_seed), file=file)
+
+        for i in range(0, n_sample): 
+            print(str(i) + ' : ' + str(draws[i]), file=file)
+
+        file.close()
+
+    with open(output_run_dir + "Uniform.npz", 'wb') as file:
+        np.savez(file, draws = draws, random_seed = random_seed)
+        file.close()
+    
+    print(str(n_sample) + ' config files generated with random seed : ' +  str(random_seed))
     
 
 
