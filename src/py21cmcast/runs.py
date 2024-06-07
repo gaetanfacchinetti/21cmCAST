@@ -605,6 +605,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                     global_quantities    = global_quantities,
                     direc                = cache_path, 
                     random_seed          = random_seed,
+                    write                = False,
                     **extra_params,
                     **kwargs,
                 )

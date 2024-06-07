@@ -74,7 +74,7 @@ def warning_on_one_line(message, category, filename, lineno, file=None, line=Non
 warnings.formatwarning = warning_on_one_line
 
 
-def compare_arrays(array_1 : np.ndarray, array_2 : np.ndarray, eps : float):
+def compare_arrays(array_1 : np.ndarray, array_2 : np.ndarray, eps : float = 0):
     """
     ## Compare arrays to a certain precision
 
@@ -237,11 +237,12 @@ class Run:
                 self._save()
 
 
+
     def _get_power_spectra(self):
 
-        if ((self._z_bins is None) or (self._z_bins == np.array([]))
-            or (self._k_bins is None) or (self._k_bins == np.array([]))
-            or (self._z_array is None) or (self._z_array == np.array([]))):
+        if ((self._z_bins is None) or compare_arrays(self._z_bins, np.array([]))
+            or (self._k_bins is None) or compare_arrays(self._k_bins, np.array([]))
+            or (self._z_array is None) or compare_arrays(self._z_array, np.array([]))):
             
             if self._verbose:
                 warnings.warn("Impossible to compute the power spectra as bins are missing")
