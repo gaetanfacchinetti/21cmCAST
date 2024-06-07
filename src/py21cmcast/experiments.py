@@ -21,12 +21,28 @@ import numpy  as np
 from astropy import units
 from scipy   import interpolate
 
+from contextlib import contextmanager
+import sys, os
+
 PY21CMSENSE = True
 
 ## This part of the code rely on 21cmSense however as many of
 ## 21cmCAST abilities do not rely on 21cmSense we allow using 
 ## 21cmCAST without 21cmSense functionalities
 
+
+@contextmanager
+def suppress_stdout_stderr():
+    with open(os.devnull, 'w') as fnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = fnull
+        sys.stderr = fnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 # create a simple observations class
 class ObservationSet:
@@ -112,7 +128,7 @@ try :
 
 
 
-    def extract_noise_from_fiducial(k_in, dsqr_in, k_out, observation) :
+    def extract_noise_from_fiducial(k_in, dsqr_in, k_out, observation, verbose = False) :
         """
         Give the noise associated to power spectra delta_arr
 
@@ -139,12 +155,17 @@ try :
         theory_model = ComputedModel(k_21 = k_in / units.Mpc, delta_21_sqr = dsqr_in * (units.mK**2))
         sensitivity  = p21s.PowerSpectrum(observation = observation, theory_model = theory_model, foreground_model = 'moderate')
         
-        k_sens            = sensitivity.k1d.value * sensitivity.cosmo.h
-        std_21cmSense     = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
+        with suppress_stdout_stderr():
+            k_sens            = sensitivity.k1d.value * sensitivity.cosmo.h
+            std_thermal_21cmSense  = sensitivity.calculate_sensitivity_1d(thermal = True, sample = False).value
+            std_sample_21cmSense   = sensitivity.calculate_sensitivity_1d(thermal = False, sample = True).value
+            std_total_21cmSense    = sensitivity.calculate_sensitivity_1d(thermal = True, sample = True).value
 
-        std = interpolate.interp1d(k_sens, std_21cmSense, bounds_error=False, fill_value=np.inf)(k_out)
+        std_thermal = interpolate.interp1d(k_sens, std_thermal_21cmSense, bounds_error=False, fill_value=np.inf)(k_out)
+        std_sample  = interpolate.interp1d(k_sens, std_sample_21cmSense, bounds_error=False, fill_value=np.inf)(k_out)
+        std_total   = interpolate.interp1d(k_sens, std_total_21cmSense, bounds_error=False, fill_value=np.inf)(k_out)
 
-        return std
+        return std_thermal, std_sample, std_total
 
 except ImportError:
 

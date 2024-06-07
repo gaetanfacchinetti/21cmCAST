@@ -373,6 +373,7 @@ def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, c
     params_cosmo = []
     draws  = []
 
+
     # set the random seed
     random.seed(random_seed)
 
@@ -421,7 +422,7 @@ def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, c
         file.close()
 
     with open(output_run_dir + "Database.npz", 'wb') as file:
-        np.savez(file, params_astro = params_astro, params_cosmo = params_cosmo, random_seed = random_seed)
+        np.savez(file, params_astro = params_astro, params_cosmo = params_cosmo, random_seed = random_seed, params_range = (astro_params | cosmo_params))
         file.close()
 
     # Create a file containing the uniform distributions
@@ -546,10 +547,13 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     config.optionxform = str
     config.read(config_file)
 
-    name            = config.get('run', 'name')
-    run_id          = config.get('run', 'run_id', fallback='') 
-    output_dir      = config.get('run', 'output_dir')
-    cache_dir       = config.get('run', 'cache_dir')
+    try:
+        name            = config.get('run', 'name')
+        run_id          = config.get('run', 'run_id', fallback='') 
+        output_dir      = config.get('run', 'output_dir')
+        cache_dir       = config.get('run', 'cache_dir')
+    except Exception as e:
+        raise FileNotFoundError("Probably impossible to open file " + config_file + " giving:\n" + str(e))
     
 
     ## Need to implement this next time
