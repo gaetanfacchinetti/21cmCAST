@@ -111,8 +111,9 @@ class Run:
     """
 
     def __init__(self, dir_path : str, lightcone_name : str,  z_bins : list = None, z_array : list = None, 
-                k_bins : list = None, logk : bool = False, p : float = 0., *, lightcone = None, load : bool = True, save : bool = True, 
-                 verbose : bool  = True) -> None: 
+                k_bins : list = None, logk : bool = False, p : float = 0., *, lightcone = None, 
+                load : bool = True, save : bool = True, 
+                verbose : bool  = True) -> None: 
         """
         Parameters
         ----------
@@ -130,8 +131,8 @@ class Run:
             Indicates that the k mode edges are logarithmically distributed
         p : float, optional
             Associated value of the parameter associated to the run
-        lightcone: lightcone object, optional
-            21cmFAST lightcone object if not None, the lightcone is not 
+        lightcone: LightCone object, optional
+            21cmFAST LightCone object if not None, the lightcone is not 
             defined from `lightcone_name` but from this lightcone object
         load : bool, optional
             When True, first search for a cached precomputed tables of
@@ -217,6 +218,7 @@ class Run:
             # Compute the power spectrum and fetch global quantities
             self._get_power_spectra()    
             self._get_global_quantities()
+            self._get_UV_luminosity_functions()
 
             # Compute the optical depth to reionization
             if PY21CMFAST:
@@ -278,7 +280,38 @@ class Run:
                 warnings.warn("Impossible to compute the power spectra: \n" + str(e))
 
 
-    
+    # compute tables of the UV_luminosity functions
+    def _get_UV_luminosity_functions(self) -> None:
+
+        self._z_uv = np.linspace(2, 10, 17)
+
+        try:
+            
+            if self._flag_options['USE_MINI_HALOS']:
+                mturnovers = 10**self._lightcone.log10_mturnovers
+                mturnovers_mini = 10**self._lightcone.log10_mturnovers_mini
+            else:
+                mturnovers = np.zeros(len(self._z_uv), dtype="float32") + 10 ** self._astro_params['M_TURN']
+                mturnovers_mini = None
+            
+            self._m_uv, self._mhalo_uv, self._log10_l_uv  = p21f.compute_luminosity_function(redshifts = self._z_uv, 
+                                                    user_params  = self._user_params, 
+                                                    astro_params = self._astro_params, 
+                                                    flag_options = self._flag_options,
+                                                    mturnovers = mturnovers,
+                                                    mturnovers_mini = mturnovers_mini
+                                                    )
+        except Exception as e:
+
+            self._m_uv = np.array([])
+            self._mhalo_uv = np.array([])
+            self._log10_l_uv = np.array([])
+
+            if self._verbose:
+                warnings.warn("Impossible to compute the UV luminosity functions: \n" + str(e))
+
+
+    # compute tables of the global quantities
     def _get_global_quantities(self):
 
         _lc_glob_redshifts = self._lightcone.node_redshifts
@@ -327,7 +360,11 @@ class Run:
                             k_bins            = self.k_bins  if self.k_bins is not None else np.array([]),
                             k_array           = self.k_array,
                             z_glob            = self.z_glob, 
-                            tau_ion           = self.tau_ion)
+                            tau_ion           = self.tau_ion,
+                            z_uv              = self.z_uv,
+                            m_uv              = self.m_uv,
+                            log10_l_uv        = self.log10_l_uv,
+                            mhalo_uv          = self.mhalo_uv)
         
         # Prepare the dictionnary of parameters
         param_dict = {'logk' : self.logk, 'p' : self.p, 
@@ -368,6 +405,10 @@ class Run:
                 self._Tk_box            = data.get('Tk_box', None)
                 self._z_glob            = data['z_glob']
                 self._tau_ion           = data['tau_ion'].item()
+                self._z_uv              = data.get('z_uv', np.array([]))
+                self._m_uv              = data.get('m_uv', np.array([]))
+                self._log10_l_uv        = data.get('log10_l_uv', np.array([]))
+                self._mhalo_uv          = data.get('mhalo_uv', np.array([]))
 
 
             with open(self._filename_params, 'rb') as file:
@@ -493,6 +534,22 @@ class Run:
     @property
     def tau_ion(self):
         return self._tau_ion
+    
+    @property
+    def z_uv(self):
+        return self._z_uv
+    
+    @property
+    def m_uv(self):
+        return self._m_uv
+    
+    @property
+    def log10_l_uv(self):
+        return self._log10_l_uv
+    
+    @property
+    def mhalo_uv(self):
+        return self._mhalo_uv
 
 
 
@@ -500,12 +557,13 @@ class Run:
 
 class Fiducial(Run): 
     """
-    # Class to define the Fiducial run
+    # Class to define Fiducial runs
     """
 
-    def __init__(self, dir_path : str, z_bins : list, z_array : list, k_bins : list, logk : bool,
-                frac_noise : float = 0.2, rs : int = None, ps_modeling_noise : np.ndarray = None, 
-                load : bool = True, save : bool = True, verbose : bool = False, **kwargs) -> None:
+    def __init__(self, dir_path : str, z_bins : np.ndarray = None, z_array : np.ndarray = None, k_bins : np.ndarray = None, logk : bool = False,
+                *, frac_noise : float = 0.2, rs : int = None, ps_modeling_noise : np.ndarray = None, 
+                load : bool = True, save : bool = True, verbose : bool = False, 
+                name : str = 'FIDUCIAL', lightcone = None, **kwargs) -> None:
 
         """
         Parameters
@@ -542,39 +600,61 @@ class Fiducial(Run):
         verbose : bool, optional
             When true, outputs information for the user
             Default is True
-
-   
+        name : str, optional
+            name of the fiducial run
+            by default it is called "FIDUCIAL"
+        lightcone : LightCone object, optional
+            Lightcone to treat as fiducial model. By default set to None
+            If not None, overwrites the search of a fiducial lightcone from name (when load is `False`)
         """
 
         self._dir_path             = dir_path
-        self._filename_exp_noise   = self._dir_path + '/cache/Table_exp_noise'
+        self._filename_exp_noise   = self._dir_path + '/cache/Table_' + name + '_noise'
         self._verbose              = verbose
 
-        # get the lightcones filenames
+        # initialisation if lightcone is given
+        if lightcone is not None:
+            
+            # force load to false
+            load = False 
+            
+            # define rs by hand or put the value -1
+            self._rs = rs if (rs is not None) else -1
+
+            # define the file name
+            _file_name = "Lightcone_rs" + str(self._rs) + "_" + name + ".h5"
+
+
+        # initialisation if lightcone is not given and load is True
         _loading_success = True
         if load is True:
+
             # here we look in the cache folder
-            _str_file_name = self._dir_path + "/cache/Table_Lightcone_rs*_FIDUCIAL.h5.npz" if (rs is None) else self._dir_path + "/cache/Table_Lightcone_rs" + str(rs) + "_FIDUCIAL.h5.npz"
+            _str_file_name = self._dir_path + "/cache/Table_Lightcone_rs*_" + name + ".h5.npz" if (rs is None) else self._dir_path + "/cache/Table_Lightcone_rs" + str(rs) + "_" + name + ".h5.npz"
             _lightcone_file_name = glob.glob(_str_file_name)
             
             if len(_lightcone_file_name) == 1:
                 _loading_success = True
                 _file_name = (_lightcone_file_name[0].split('/')[-1])[6:-4] # remove the dir_path and 'Table_' ... '.npz'
+                self._rs   = _file_name.split('_')[-2][2:]
             else:
                 _loading_success = False
 
-          # if we do not load, one has to find a lightcone for the fiducial
-        if load is False or _loading_success is False : 
-            _str_file_name = self._dir_path + "/Lightcone_rs*_FIDUCIAL.h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_FIDUCIAL.h5"
+
+        # if we do not load and the lightcone input is None 
+        # one has to find a lightcone for the fiducial in the datafiles
+        if (load is False or _loading_success is False) and lightcone is None:  
+
+            _str_file_name = self._dir_path + "/Lightcone_rs*_" + name + ".h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_" + name + ".h5"
             _lightcone_file_name = glob.glob(_str_file_name)
             _file_name = _lightcone_file_name[0].split('/')[-1] 
 
-        assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
-        
-        self._rs   = _file_name.split('_')[-2][2:]
+            assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
+            self._rs   = _file_name.split('_')[-2][2:]
+     
 
         # Initialise the parent object
-        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, 0., lightcone = None, load=load, save=save, verbose = verbose)
+        super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, 0., lightcone = lightcone, load=load, save=save, verbose = verbose)
         
         # Getting the noise associated to the fiducial
         self._frac_noise         = frac_noise
@@ -587,14 +667,16 @@ class Fiducial(Run):
     def _save_ps_exp_noise(self, observation):
          
          with open(self._filename_exp_noise + '_' + observation + '.npz', 'wb') as file: 
-            np.savez(file, ps_exp_noise         = self.ps_exp_noise,
-                            z_array             = self.z_array,
-                            k_array             = self.k_array,
-                            z_bins              = self.z_bins,
-                            k_bins              = self.k_bins)
+            np.savez(file, ps_thermal_exp_noise = self.ps_thermal_exp_noise,
+                            ps_sample_exp_noise = self.ps_sample_exp_noise,
+                            ps_total_exp_noise  = self.ps_total_exp_noise,
+                            z_array              = self.z_array,
+                            k_array              = self.k_array,
+                            z_bins               = self.z_bins,
+                            k_bins               = self.k_bins)
             
 
-    def _load_ps_exp_noise(self, observation_set):
+    def load_ps_exp_noise(self, observation_set = "default_HERA"):
 
         data   = None
 
@@ -614,7 +696,10 @@ class Fiducial(Run):
                     and compare_arrays(_z_bins, self._z_bins, 1e-3) \
                     and compare_arrays(_k_bins, self._k_bins, 1e-3) :
 
-                    self._ps_exp_noise      = data['ps_exp_noise']
+                    self._ps_total_exp_noise     = data.get('ps_total_exp_noise', data.get('ps_exp_noise', np.array([]))) # compatible with old implementation
+                    self._ps_thermal_exp_noise   = data.get('ps_thermal_exp_noise', np.array([]))
+                    self._ps_sample_exp_noise    = data.get('ps_sample_exp_noise', np.array([]))
+
                 else:
                     return False
 
@@ -646,8 +731,16 @@ class Fiducial(Run):
             self._ps_modeling_noise = self._frac_noise * self._power_spectrum
 
     @property
-    def ps_exp_noise(self):
-        return np.array(self._ps_exp_noise)
+    def ps_sample_exp_noise(self):
+        return np.array(self._ps_sample_exp_noise)
+
+    @property
+    def ps_thermal_exp_noise(self):
+        return np.array(self._ps_thermal_exp_noise)
+    
+    @property
+    def ps_total_exp_noise(self):
+        return np.array(self._ps_total_exp_noise)
     
     @property
     def ps_modeling_noise(self):
@@ -676,10 +769,12 @@ class Fiducial(Run):
     def compute_power_spectrum_sensitivity(self):
 
         # Get the Lightcone quantity
-        if PY21CMFAST:
-            self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
-        else : 
-            ImportError("21cmFAST is needed to read new lightcones")
+        if self._lightcone is None:
+            
+            if PY21CMFAST:
+                self._lightcone   = p21f.LightCone.read(self._dir_path + "/" + self._name)
+            else : 
+                ImportError("21cmFAST is needed to read new lightcones")
 
         # In order to compute the sensitivity we need the full range of z and k possible
         # We recompute a second power spectra for the sensitivity on a broader range
@@ -699,9 +794,9 @@ class Fiducial(Run):
         # Getting the name of the observation settings
         obs_name = "default_HERA" if (observation_set is None) else observation_set.name
 
-        # Trying to load the senstivity from the observations sent
+        # Trying to load the sensitivity from the observations sent
         # Here we just need the name of the observation object
-        _load_succesfull = self._load_ps_exp_noise(obs_name) if load else False
+        _load_succesfull = self.load_ps_exp_noise(obs_name) if load else False
 
         if _load_succesfull:
             print("Successfully loaded sensitivity for ", obs_name)
@@ -717,16 +812,23 @@ class Fiducial(Run):
         assert (_observation_set.observations is not None), ValueError("observations in ObservationSet must be a set of observations from 21cmSense")
         assert (len(_observation_set.observations) == len(self.z_array)), ValueError("We must have one observation for each redshift bin") 
 
-        _std = None
-        self._ps_exp_noise = None
+        self._ps_thermal_exp_noise = np.zeros((len(self.z_array), len(self.k_array)))
+        self._ps_sample_exp_noise  = np.zeros((len(self.z_array), len(self.k_array)))
+        self._ps_total_exp_noise   = np.zeros((len(self.z_array), len(self.k_array)))
 
         # if the power spectrum is not computed we do compute it
         if self._is_ps_sens_computed is False:
             self.compute_power_spectrum_sensitivity()
 
-        _std = [p21c_exp.extract_noise_from_fiducial(self.k_array_sens[iz], self.power_spectrum_sens[iz], self.k_array, _observation_set.observations[iz]) for iz, _ in enumerate(self.z_array)]
-
-        self._ps_exp_noise = _std
+        for iz, _ in enumerate(self.z_array):
+            _std_thermal, _std_sample, _std_total =  p21c_exp.extract_noise_from_fiducial(self.k_array_sens[iz], 
+                                                                                          self.power_spectrum_sens[iz], 
+                                                                                          self.k_array, 
+                                                                                          _observation_set.observations[iz], 
+                                                                                          self._verbose)
+            self._ps_thermal_exp_noise[iz, :] = _std_thermal
+            self._ps_sample_exp_noise[iz, :]  = _std_sample
+            self._ps_total_exp_noise[iz, :]   = _std_total
             
         if save is True:
             self._save_ps_exp_noise(_observation_set.name)
@@ -773,7 +875,7 @@ class Fiducial(Run):
     
 
     def plot_power_spectrum(self):
-        super().plot_power_spectrum(std=self._ps_exp_noise, figname = self._dir_path + "/power_spectra/power_spectrum_FIDUCIAL.pdf")
+        super().plot_power_spectrum(std=self._ps_total_exp_noise, figname = self._dir_path + "/power_spectra/power_spectrum_FIDUCIAL.pdf")
 
 
     def plot_xH_box(self):
@@ -1093,7 +1195,7 @@ class Parameter:
         """
         
         # experimental error
-        ps_exp_noise   = self._fiducial.ps_exp_noise  
+        ps_exp_noise   = self._fiducial.ps_total_exp_noise  
 
         # theoretical uncertainty from the simulation              
         ps_poisson_noise  = self._fiducial.ps_poisson_noise 
@@ -1197,7 +1299,7 @@ class Parameter:
         _order     = np.argsort(_p_vals)
         _ps        = np.array(_ps)[_order]
 
-        error_std = np.sqrt(self._fiducial.ps_exp_noise**2 + self._fiducial.ps_poisson_noise**2 + self.fiducial.ps_modeling_noise**2)
+        error_std = np.sqrt(self._fiducial.ps_total_exp_noise**2 + self._fiducial.ps_poisson_noise**2 + self.fiducial.ps_modeling_noise**2)
 
         fig = p21c_tools.plot_func_vs_z_and_k(self.z_array, self.k_array, _ps, std = error_std,
                                                 title=r'$\Delta_{21}^2 ~ {\rm [mK^2]}$', 
@@ -1208,7 +1310,7 @@ class Parameter:
 
     def plot_weighted_ps_derivative(self):
 
-        if self.fiducial.ps_exp_noise is None:
+        if self.fiducial.ps_total_exp_noise is None:
             ValueError("Error: cannot plot the weighted derivatives if the error \
                         if the experimental error is not defined in the fiducial")
 
