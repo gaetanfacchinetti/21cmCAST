@@ -51,6 +51,7 @@ from py21cmcast import tools as p21c_tools
 import warnings
 import numpy as np
 import random
+import gc, importlib
 
 PY21CMFAST = True
 try:
@@ -600,6 +601,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     try: 
 
         if PY21CMFAST:
+
             lightcone = p21f.run_lightcone(
                     user_params          = user_params,
                     astro_params         = astro_params,
@@ -627,6 +629,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
         # at the end, we clear the cache 
         if PY21CMFAST:
             p21f.cache_tools.clear_cache(direc=cache_path)
+            
         else:
             ImportError("Need 21cmFAST to run ligthcones")
         # delete the directory once it has been emptied
@@ -635,7 +638,3 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
         pass
 
     return lightcone, run_id, output_dir
-
-
-    
- 
