@@ -687,8 +687,15 @@ class Fiducial(Run):
         # This makes the code longer but it is necessary to have everything well defined and no numerical problems
         _, _data_arr   = p21c_p.compute_powerspectra_1D(self._lightcone, chunk_indices = self._chunk_indices, remove_nans=False, vb=False)
 
-        self._k_array_sens         = np.array([data['k'] for data in _data_arr])
-        self._power_spectrum_sens  = np.array([data['delta'] for data in _data_arr])
+        n_k = np.max([len(data['k']) for data in _data_arr])
+        n_ps = np.max([len(data['delta']) for data in _data_arr])
+        
+        self._k_array_sens = np.full((len(_data_arr), n_k), fill_value=np.nan)
+        self._power_spectrum_sens = np.full((len(_data_arr), n_ps), fill_value=np.nan)
+        
+        for idata, data in enumerate(_data_arr):
+            self._k_array_sens[idata, 0:len(data['k'])] = data['k']
+            self._power_spectrum_sens[idata, 0:len(data['delta'])] = data['delta']
 
         self._is_ps_sens_computed = True
 
