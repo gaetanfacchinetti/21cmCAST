@@ -296,6 +296,7 @@ class Run:
             
             self._m_uv, self._mhalo_uv, self._log10_l_uv  = p21f.compute_luminosity_function(redshifts = self._z_uv, 
                                                     user_params  = self._user_params, 
+                                                    cosmo_params = self._cosmo_params,
                                                     astro_params = self._astro_params, 
                                                     flag_options = self._flag_options,
                                                     mturnovers = mturnovers,

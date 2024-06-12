@@ -1,7 +1,8 @@
 import argparse
 import py21cmcast as p21c
 from astropy import units
-import os
+import os, gc, importlib
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("config_dir", type = str, help="Path to config file")
@@ -29,13 +30,18 @@ for i in range(imin, imax):
 
         # run the lightcone with the given seed
         lightcone, run_id, output_dir = p21c.run_lightcone_from_config(os.path.join(config_dir, "Config_" + str(i) + ".config"), n_omp, random_seed)
-        
+
         # define the p21c object to save
         run = p21c.Fiducial(output_dir, z_bins, z_centers, k_bins, False, lightcone = lightcone, frac_noise = 0.2,
                     load = False, save = True, verbose = False, name = "Run_" + str(i), rs = lightcone.random_seed)
         
         # compute the noise associated
         run.compute_sensitivity()
+
+        # enforce freeing memory
+        del run
+        del lightcone
+        gc.collect()
     
     except Exception as e:
         print(str(s_id) + " : Run " + str(i) + " failed: \n" + str(e))
