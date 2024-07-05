@@ -538,9 +538,16 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     ----------
     lightcone: Lightcone object (see 21cmFAST)
         lightcone of the run
-    run_id: string
+    run_id: str
         identifier of the run
+    output_dir: str
+        where to save the data
+    reio_test: bool
+        whether we pass the test for for reionization 
     """
+
+    if not PY21CMFAST:
+        ImportError("Need 21cmFAST to run ligthcones")
 
     ####################### Getting the data ############################
 
@@ -567,6 +574,54 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     astro_params    = p21c_tools.read_config_params(config.items('astro_params'), int_type=False)
     cosmo_params    = p21c_tools.read_config_params(config.items('cosmo_params'), int_type=False)
 
+
+    # Special treatment to pass an int as global parameter
+    recombPhotCons = extra_params.get('RecombPhotonCons', None)
+    if recombPhotCons is not None:
+        extra_params['RecombPhotonCons'] = int(recombPhotCons)
+
+    keys_to_remove = ['redshift', 'max_redshift']
+    global_kwargs = {k: v for k, v in extra_params.items() if k not in keys_to_remove}
+
+
+    # If photon conservation used, first check if reionization happens soon enough
+    # for that run the analytical calibration curve without inhomogeneous recombination
+    # ask that the HII volume filling factor be higher than 0.5 at the smallest redshift
+    # this way runs with no complete ionization can be flagged before running the lightcone
+    # Note that the analytical estimation tends to overestimate Q_HII because it does not
+    # account for the recombinations (even though it does not accoung also for X-rays (pre)ionization)
+    if flag_options.get('PHOTON_CONS', False) is True:
+        try:
+            with p21f.global_params.use(**global_kwargs):
+                data = p21f.get_Q_analytic_nonconservation_data(user_params=user_params, 
+                                                                 cosmo_params=cosmo_params, 
+                                                                 astro_params=astro_params, 
+                                                                 flag_options=flag_options, 
+                                                                 **global_kwargs)
+                
+                Q_max = data.get('Q_analytic', np.array([-1.0]))[0]
+                z_min = data.get('z_analytic', np.array([-1.0]))[0]
+
+                if Q_max < 0.5:
+                    
+                    # get all the input parameters
+                    (user_params, cosmo_params, astro_params, flag_options) = p21f._setup_inputs({ "user_params": user_params, "cosmo_params": cosmo_params, "astro_params" : astro_params, "flag_options" : flag_options})
+                    
+                    # returns a list of parameters we can save
+                    params_out = {'astro_params': dict(astro_params.self), 
+                                'user_params': dict(user_params.self),
+                                'flag_options': dict(flag_options.self),
+                                'cosmo_params' : dict(cosmo_params.self),
+                                'z_min' : z_min,
+                                'Q_max' : Q_max}
+
+                    return None, run_id, output_dir, params_out
+                
+        except Exception as e:
+            p21f.free_C_memory()
+            print("Impossible to get the analytic calibration value of Q_HII because :", e, flush=True)
+
+        
 
     # manually set the number of threads
     if n_omp is not None: 
@@ -600,41 +655,37 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
 
     try: 
 
-        if PY21CMFAST:
-
-            lightcone = p21f.run_lightcone(
-                    user_params          = user_params,
-                    astro_params         = astro_params,
-                    cosmo_params         = cosmo_params,
-                    flag_options         = flag_options,
-                    lightcone_quantities = lightcone_quantities,
-                    global_quantities    = global_quantities,
-                    direc                = cache_path, 
-                    random_seed          = random_seed,
-                    write                = False,
-                    **extra_params,
-                    **kwargs,
-                )
-        else:
-            ImportError("Need 21cmFAST to run ligthcones")
-        
+        lightcone = p21f.run_lightcone(
+                user_params          = user_params,
+                astro_params         = astro_params,
+                cosmo_params         = cosmo_params,
+                flag_options         = flag_options,
+                lightcone_quantities = lightcone_quantities,
+                global_quantities    = global_quantities,
+                direc                = cache_path, 
+                random_seed          = random_seed,
+                write                = False,
+                **extra_params,
+                **kwargs,
+            )
+    
     except Exception as e :
-
-        print(e)
+        
+        # free the memory of the C code
+        p21f.free_C_memory()
+        print("The ligthcone could not run because :", e, flush=True)
 
         lightcone = None
-        run_id    = None
 
-    try: 
-        # at the end, we clear the cache 
-        if PY21CMFAST:
-            p21f.cache_tools.clear_cache(direc=cache_path)
-            
-        else:
-            ImportError("Need 21cmFAST to run ligthcones")
+    ####################### Clearing the cache (if exists) ############################
+    
+    try:
+        p21f.cache_tools.clear_cache(direc=cache_path)
         # delete the directory once it has been emptied
-        os.rmdir(cache_path) 
+        os.rmdir(cache_path)
     except FileNotFoundError:
         pass
 
-    return lightcone, run_id, output_dir
+
+
+    return lightcone, run_id, output_dir, {}

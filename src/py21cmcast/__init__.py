@@ -27,6 +27,7 @@ from .tools import (
     prepare_triangle_plot,
     confidence_ellipse,
     ellipse_from_covariance,
+    make_directory,
 )
 
 from .power import (
