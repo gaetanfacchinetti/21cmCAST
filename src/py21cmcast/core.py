@@ -646,13 +646,14 @@ class Fiducial(Run):
         # one has to find a lightcone for the fiducial in the datafiles
         if (load is False or _loading_success is False) and lightcone is None:  
 
-            _str_file_name = self._dir_path + "/Lightcone_rs*_" + name + ".h5" if (rs is None) else self._dir_path + "/Lightcone_rs" + str(rs) + "_" + name + ".h5"
-            _lightcone_file_name = glob.glob(_str_file_name)
-            _file_name = _lightcone_file_name[0].split('/')[-1] 
-
-            assert len(_lightcone_file_name) == 1, 'No fiducial lightcone found or too many'
-            self._rs   = _file_name.split('_')[-2][2:]
-     
+            if rs is None:
+                _str_file_name = self._dir_path + "/Lightcone_rs*_" + name + ".h5" 
+                _lightcone_file_name = glob.glob(_str_file_name)
+                _file_name = _lightcone_file_name[0].split('/')[-1] 
+                self._rs   = _file_name.split('_')[-2][2:]
+            else:
+                _file_name = "Lightcone_rs" + str(rs) + "_" + name + ".h5"
+                self._rs = rs
 
         # Initialise the parent object
         super().__init__(self._dir_path, _file_name, z_bins, z_array, k_bins, logk, 0., lightcone = lightcone, load=load, save=save, verbose = verbose)
