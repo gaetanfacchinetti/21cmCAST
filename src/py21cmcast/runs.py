@@ -63,8 +63,8 @@ except ImportError:
 
 
 
-def init_runs(config_file: str, q_scale: float | None = None, clean_existing_dir: bool = False, 
-              verbose: bool = False, output_dir: str | None = None, cache_dir: str | None = None,
+def init_runs(config_file: str, q_scale: float = None, clean_existing_dir: bool = False, 
+              verbose: bool = False, output_dir: str = None, cache_dir: str = None,
               generate_script: bool = False, **kwargs) -> None :
 
     """ 
@@ -247,7 +247,7 @@ def init_runs(config_file: str, q_scale: float | None = None, clean_existing_dir
 
 
 
-def generate_slurm_script(job_name, nruns, output_dir, random_seed: int | None = None, email_address: str | None = None):
+def generate_slurm_script(job_name, nruns, output_dir, random_seed: int = None, email_address: str = None):
 
     """
     Generate a bash script automatically for the job
