@@ -389,7 +389,7 @@ class Run:
         try:
 
             with open(self._filename_data, 'rb') as file: 
-                data = np.load(file)
+                data = np.load(file, allow_pickle=True)
                 
                 self._power_spectrum    = data['power_spectrum']
                 self._ps_poisson_noise  = data['ps_poisson_noise']

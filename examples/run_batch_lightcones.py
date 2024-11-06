@@ -32,7 +32,7 @@ for i in range(imin, imax):
         lightcone, run_id, output_dir, params = p21c.run_lightcone_from_config(os.path.join(config_dir, "Config_" + str(i) + ".config"), n_omp, random_seed)
 
         # test if was able to pass the reionization test (if it applies)
-        if params.get('Q_max', 1.0) < 0.5:
+        if params.get('Q_max', 1.0) < 0.7 or params.get('Q_mid', 1.0) < 0.4:
             p21c.make_directory(os.path.join(output_dir, "cache"), clean_existing_dir=False)        
             with open(os.path.join(output_dir, 'cache/LateReionization_Run_' + run_id + '.pkl'), 'wb') as file:
                 pickle.dump(params, file)

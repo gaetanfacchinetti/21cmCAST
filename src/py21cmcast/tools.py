@@ -156,7 +156,7 @@ def write_config_params(filename, name, output_dir, cache_dir,
         print("name      : " + name, file=f)
         print("run_id    : " + key, file=f)
         print("output_dir : " + output_dir, file=f)
-        print("cache_dir : " + cache_dir, file=f)
+        print("cache_dir : " + cache_dir + "/", file=f)
         print('', file=f)
         
         print("[extra_params]", file=f)

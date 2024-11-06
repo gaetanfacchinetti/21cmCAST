@@ -44,14 +44,14 @@
 ##################################################################################
 
 import configparser
-from copy import deepcopy
 import os
 
 from py21cmcast import tools as p21c_tools
 import warnings
 import numpy as np
 import random
-import gc, importlib
+
+from scipy import interpolate
 
 PY21CMFAST = True
 try:
@@ -63,31 +63,45 @@ except ImportError:
 
 
 
-def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = False, verbose = False) -> None :
+def init_runs(config_file: str, q_scale: float | None = None, clean_existing_dir: bool = False, 
+              verbose: bool = False, output_dir: str | None = None, cache_dir: str | None = None,
+              generate_script: bool = False, **kwargs) -> None :
 
     """ 
-    Initialise the runs for a fisher analysis according to 
-    a fiducial model defined in config_file
+    Initialise the runs for a fisher analysis according to a fiducial model defined in config_file
     
-    Params : 
-    --------
-    config_file : str
+    Params
+    ------
+    - config_file : str
         Path to the config file representing the fiducial
-    q_scale : float, optional
+    - q_scale : float, optional
         Gives the points where to compute the derivative in pourcentage of the fiducial parameters
-    erase_dir : bool, optional
+    - clean_existing_dir : bool, optional
         If True forces the creation of a folder 
+    - verbose : bool, optional
+    - output_dir : str, optional
+    - cache_dir : str, optional
+    **kwargs: 
+    ---------
+    passed to generate_slurm_script
     """
+
+    if q_scale is None:
+        q_scale = 3.0
 
     config = configparser.ConfigParser(delimiters=':')
     config.optionxform = str
 
     config.read(config_file)
+    name = config.get('run', 'name')
 
-    name            = config.get('run', 'name')
-    output_dir      = config.get('run', 'output_dir')
-    cache_dir       = config.get('run', 'cache_dir')
-
+    try:
+        output_dir = config.get('run', 'output_dir') if output_dir is None else output_dir
+        cache_dir  = config.get('run', 'cache_dir')  if cache_dir  is None else cache_dir
+    except configparser.NoSectionError:
+        output_dir = os.path.join(os.getcwd(), "output_" + name.upper())
+        cache_dir = os.path.join(os.getcwd(), "cache_" + name.upper())
+  
     extra_params = {}
 
     try:
@@ -226,7 +240,55 @@ def init_runs(config_file: str, q_scale: float = 3., clean_existing_dir: bool = 
                                        lightcone_q, global_q, extra_params, user_params, flag_options, astro_params_fid, cosmo_params, key)
         irun = irun + 1
     
+    if generate_script : 
+        generate_slurm_script(name, irun, output_dir, **kwargs)
+
     return 
+
+
+
+def generate_slurm_script(job_name, nruns, output_dir, random_seed: int | None = None, email_address: str | None = None):
+
+    """
+    Generate a bash script automatically for the job
+    """
+
+    if random_seed is None:
+        random_seed = 1993
+
+    current_dir = os.getcwd()
+
+    with open(os.path.join(current_dir, "submit_" + job_name.upper() + '.sh'), 'w') as file:
+    
+        print("#!/bin/bash", file = file)
+        print("#", file = file)
+        print("#SBATCH --job-name=" + job_name.upper(), file = file)
+        print("#SBATCH --output=" + job_name.upper() + "log_%a.txt", file = file)
+        print("#", file = file)
+        print("#SBATCH --ntasks=1", file = file)
+        print("#SBATCH --cpus-per-task=8", file = file)
+        print("#SBATCH --time=02:00:00", file = file)
+        print("#SBATCH --mem=15000", file = file)
+        print("#", file = file)
+        
+        if email_address is not None: 
+            print("#SBATCH --mail-type=ALL", file = file)
+            print("#SBATCH --mail-user=" + email_address, file = file)
+        
+        print("#SBATCH --array=0-" + str(nruns-2), file = file)
+
+        print("", file = file)
+        print("source ~/.bash_modules", file = file)
+        print("source " + os.path.join(current_dir, "../bin/activate"), file = file)
+
+        print("", file = file)
+        print("export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK", file = file)
+        print("FILES=(" + os.path.join(output_dir, job_name.upper() + "/*.config") + ")", file = file)
+
+        print("", file = file)
+        print("srun python " + os.path.join(current_dir, "../21cmCAST/examples/run_lightcone.py") + " ${FILES[$SLURM_ARRAY_TASK_ID]} -nomp $SLURM_CPUS_PER_TASK -rs " + str(random_seed), file = file)
+
+
 
 
 def init_grid_runs(config_file: str, clean_existing_dir: bool = False, verbose:bool = False) -> None:
@@ -330,16 +392,19 @@ def indices_combinations(*arrays, index_combinations=None):
 
     
 
-def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, clean_existing_dir: bool = False, verbose:bool = False) -> None:
+def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, clean_existing_dir: bool = False, verbose:bool = False, n_folder:int = None) -> None:
     
     config = configparser.ConfigParser(delimiters=':')
     config.optionxform = str
 
     config.read(config_file)
 
-    name            = config.get('run', 'name')
+    name            = config.get('run', 'name') 
     output_dir      = config.get('run', 'output_dir')
     cache_dir       = config.get('run', 'cache_dir')
+
+    if n_folder is not None:
+        name = name + "_" + str(n_folder)
 
     output_run_dir = output_dir + "/" + name.upper() + "/"
     existing_dir = p21c_tools.make_directory(output_run_dir, clean_existing_dir = clean_existing_dir)
@@ -599,10 +664,25 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                                                                  flag_options=flag_options, 
                                                                  **global_kwargs)
                 
-                Q_max = data.get('Q_analytic', np.array([-1.0]))[0]
-                z_min = data.get('z_analytic', np.array([-1.0]))[0]
+                Q = data.get('Q_analytic', np.array([-1.0]))
+                z = data.get('z_analytic', np.array([-1.0]))
 
-                if Q_max < 0.5:
+                Q_max = Q[0]
+                z_min = z[0]
+                z_max = z[-1]
+
+                Q_mid = 1.0
+
+                if z_min <= 5.9 and z_max >= 5.9:
+                    # try block in order to avoid critical errors as, anyway computing Q_mid is
+                    # not crucial and should not make everything crash
+                    try:
+                        # value of Q at redshift 5.9 (where we have strong constraints)
+                        Q_mid = interpolate.interp1d(z, Q)(5.9).item()
+                    except Exception as e:
+                        print("Could not compute Q_mid because: ", e, flush=True)
+
+                if Q_max < 0.7 or Q_mid < 0.4:
                     
                     # get all the input parameters
                     (user_params, cosmo_params, astro_params, flag_options) = p21f._setup_inputs({ "user_params": user_params, "cosmo_params": cosmo_params, "astro_params" : astro_params, "flag_options" : flag_options})
@@ -613,7 +693,8 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                                 'flag_options': dict(flag_options.self),
                                 'cosmo_params' : dict(cosmo_params.self),
                                 'z_min' : z_min,
-                                'Q_max' : Q_max}
+                                'Q_max' : Q_max, 
+                                'Q_mid' : Q_mid,}
 
                     return None, run_id, output_dir, params_out
                 
@@ -621,7 +702,6 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
             p21f.free_C_memory()
             print("Impossible to get the analytic calibration value of Q_HII because :", e, flush=True)
 
-        
 
     # manually set the number of threads
     if n_omp is not None: 
@@ -653,6 +733,9 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     if len(global_quantities) == 0:
         global_quantities = ('brightness_temp', 'xH_box',)
 
+
+    error = None
+
     try: 
 
         lightcone = p21f.run_lightcone(
@@ -664,7 +747,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
                 global_quantities    = global_quantities,
                 direc                = cache_path, 
                 random_seed          = random_seed,
-                write                = False,
+                write                = True,
                 **extra_params,
                 **kwargs,
             )
@@ -674,8 +757,10 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
         # free the memory of the C code
         p21f.free_C_memory()
         print("The ligthcone could not run because :", e, flush=True)
-
+    
         lightcone = None
+
+        error = e
 
     ####################### Clearing the cache (if exists) ############################
     
@@ -686,6 +771,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     except FileNotFoundError:
         pass
 
-
+    if error is not None:
+        raise error
 
     return lightcone, run_id, output_dir, {}
