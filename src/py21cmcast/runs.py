@@ -263,11 +263,11 @@ def generate_slurm_script(job_name, nruns, output_dir, random_seed: int = None, 
         print("#!/bin/bash", file = file)
         print("#", file = file)
         print("#SBATCH --job-name=" + job_name.upper(), file = file)
-        print("#SBATCH --output=" + job_name.upper() + "log_%a.txt", file = file)
+        print("#SBATCH --output=" + job_name.upper() + "_log_%a.txt", file = file)
         print("#", file = file)
         print("#SBATCH --ntasks=1", file = file)
         print("#SBATCH --cpus-per-task=8", file = file)
-        print("#SBATCH --time=02:00:00", file = file)
+        print("#SBATCH --time=01:30:00", file = file)
         print("#SBATCH --mem=15000", file = file)
         print("#", file = file)
         
@@ -283,7 +283,7 @@ def generate_slurm_script(job_name, nruns, output_dir, random_seed: int = None, 
 
         print("", file = file)
         print("export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK", file = file)
-        print("FILES=(" + os.path.join(output_dir, job_name.upper() + "/*.config") + ")", file = file)
+        print("FILES=(" + os.path.join(os.path.abspath(output_dir), job_name.upper() + "/*.config") + ")", file = file)
 
         print("", file = file)
         print("srun python " + os.path.join(current_dir, "../21cmCAST/examples/run_lightcone.py") + " ${FILES[$SLURM_ARRAY_TASK_ID]} -nomp $SLURM_CPUS_PER_TASK -rs " + str(random_seed), file = file)
