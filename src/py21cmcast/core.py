@@ -324,9 +324,12 @@ class Run:
         _x_e_box       = self._lightcone.global_quantities.get('x_e_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _Ts_box        = self._lightcone.global_quantities.get('Ts_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
         _Tk_box        = self._lightcone.global_quantities.get('Tk_box', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _chiB          = self._lightcone.global_quantities.get('chiB', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _dpmf_turb_dt  = self._lightcone.global_quantities.get('dpmf_turb_dt', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
+        _dpmf_ad_dt    = self._lightcone.global_quantities.get('dpmf_ad_dt', np.zeros(len(_lc_glob_redshifts), dtype=np.float64))
 
         # constrain the value of the ionization fraction between 0 and 1
-        _xHIIdb[ _xHIIdb > 1.0 ] = 1.0
+        #_xHIIdb[ _xHIIdb > 1.0 ] = 1.0
         _xHIIdb[ _xHIIdb < 0.0 ] = 0.0
 
         self._global_signal = interpolate.interp1d(_lc_glob_redshifts, _global_signal)(self._z_glob)
@@ -335,8 +338,9 @@ class Run:
         self._x_e_box       = interpolate.interp1d(_lc_glob_redshifts, _x_e_box)(self._z_glob)
         self._Ts_box        = interpolate.interp1d(_lc_glob_redshifts, _Ts_box)(self._z_glob)
         self._Tk_box        = interpolate.interp1d(_lc_glob_redshifts, _Tk_box)(self._z_glob)
-
-
+        self._chiB          = interpolate.interp1d(_lc_glob_redshifts, _chiB)(self._z_glob)
+        self._dpmf_turb_dt  = interpolate.interp1d(_lc_glob_redshifts, _dpmf_turb_dt)(self._z_glob)
+        self._dpmf_ad_dt    = interpolate.interp1d(_lc_glob_redshifts, _dpmf_ad_dt)(self._z_glob)
 
     def _save(self):
         """
@@ -365,7 +369,10 @@ class Run:
                             z_uv              = self.z_uv,
                             m_uv              = self.m_uv,
                             log10_l_uv        = self.log10_l_uv,
-                            mhalo_uv          = self.mhalo_uv)
+                            mhalo_uv          = self.mhalo_uv,
+                            chiB              = self.chiB,
+                            dpmf_ad_dt        = self.dpmf_ad_dt,
+                            dpmf_turb_dt      = self.dpmf_turb_dt)
         
         # Prepare the dictionnary of parameters
         param_dict = {'logk' : self.logk, 'p' : self.p, 
@@ -410,7 +417,9 @@ class Run:
                 self._m_uv              = data.get('m_uv', np.array([]))
                 self._log10_l_uv        = data.get('log10_l_uv', np.array([]))
                 self._mhalo_uv          = data.get('mhalo_uv', np.array([]))
-
+                self._chiB              = data.get('chiB', np.array([]))
+                self._dpmf_turb_dt      = data.get('dpmf_turb_dt', np.array([]))
+                self._dpmf_ad_dt        = data.get('dpmf_ad_dt', np.array([]))
 
             with open(self._filename_params, 'rb') as file:
                 params = pickle.load(file)
@@ -552,8 +561,17 @@ class Run:
     def mhalo_uv(self):
         return self._mhalo_uv
 
-
-
+    @property
+    def chiB(self):
+        return self._chiB
+    
+    @property
+    def dpmf_turb_dt(self):
+        return self._dpmf_turb_dt
+    
+    @property
+    def dpmf_ad_dt(self):
+        return self._dpmf_ad_dt
 
 
 class Fiducial(Run): 
