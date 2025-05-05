@@ -392,7 +392,14 @@ def indices_combinations(*arrays, index_combinations=None):
 
     
 
-def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, clean_existing_dir: bool = False, verbose:bool = False, n_folder:int = None) -> None:
+def init_random_runs(config_file: str, 
+                     *, 
+                     n_sample = 1000, 
+                     random_seed = None, 
+                     clean_existing_dir: bool = False, 
+                     verbose:bool = False, 
+                     n_folder:int = None,
+                     condition_func = None) -> None:
     
     config = configparser.ConfigParser(delimiters=':')
     config.optionxform = str
@@ -443,7 +450,11 @@ def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, c
     # set the random seed
     random.seed(random_seed)
 
-    for i in range(0, n_sample): 
+    i: int = 0
+    j: int = 0
+    iter_max: int = 100*n_sample
+
+    while i < n_sample and j < iter_max: 
 
         # Initialise the parameters
         params_astro.append({ k : 0 for k in astro_params.keys()})
@@ -472,9 +483,19 @@ def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, c
                     params_cosmo[i][param_key] = param_values[0]
 
                 # remove the parameter in the dictionnary of draws as nothing is drawn for that parameter
-                draws[i].pop(param_key)
-            
-        
+                if param_key in draws[i].keys(): 
+                    draws[i].pop(param_key)
+
+        if condition_func is not None:
+            # only increment if the condition is satisfied
+            if condition_func(**(params_astro[i] | params_cosmo[i])) is True:
+                i = i+1
+        else:
+            i = i+1
+
+        # always increment j
+        j = j+1
+
     with open(output_run_dir + "/Database.txt", 'a') as file:
 
         print("# random seed = " + str(random_seed), file=file)
@@ -505,7 +526,7 @@ def init_random_runs(config_file: str, *, n_sample = 1000, random_seed = None, c
         np.savez(file, draws = draws, random_seed = random_seed)
         file.close()
     
-    print(str(n_sample) + ' config files generated with random seed : ' +  str(random_seed))
+    print(str(n_sample) + ' config files generated with random seed : ' +  str(random_seed) + ' | ' + str(j-n_sample) + ' points rejected to match condition')
     
 
 
@@ -658,6 +679,7 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     if flag_options.get('PHOTON_CONS', False) is True:
         try:
             with p21f.global_params.use(**global_kwargs):
+
                 data = p21f.get_Q_analytic_nonconservation_data(user_params=user_params, 
                                                                  cosmo_params=cosmo_params, 
                                                                  astro_params=astro_params, 
