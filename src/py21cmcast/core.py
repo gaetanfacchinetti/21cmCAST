@@ -1153,10 +1153,10 @@ class Parameter:
             self._ps_derivative['centred'] = [_der[iz][1] for iz, _ in enumerate(self._z_array)]
             self._ps_derivative['right']   = [_der[iz][2] for iz, _ in enumerate(self._z_array)]
 
-        if len(self._p_value) == 1 and self._p_value[0] < 0 :
+        if (len(self._p_value) == 1) and (self._p_value[0] - self._param_fid < 0)  :
             self._ps_derivative['left'] = [_der[iz][0] for iz, _ in enumerate(self._z_array)]
         
-        if len(self._p_value) == 1 and self._p_value[0] > 0 :
+        if (len(self._p_value) == 1) and (self._p_value[0] - self._param_fid > 0 ):
             self._ps_derivative['right'] = [_der[iz][0] for iz, _ in enumerate(self._z_array)]
 
         

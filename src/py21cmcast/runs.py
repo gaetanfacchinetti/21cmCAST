@@ -666,9 +666,13 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
     if recombPhotCons is not None:
         extra_params['RecombPhotonCons'] = int(recombPhotCons)
 
+
+    print(f"redshit = {extra_params['redshift']} | max_redshift = {extra_params['max_redshift']}")
+
+    max_redshift = extra_params.get('max_redshift', 35.0)
+    
     keys_to_remove = ['redshift', 'max_redshift']
     global_kwargs = {k: v for k, v in extra_params.items() if k not in keys_to_remove}
-
 
     # If photon conservation used, first check if reionization happens soon enough
     # for that run the analytical calibration curve without inhomogeneous recombination
@@ -760,19 +764,21 @@ def run_lightcone_from_config(config_file: str, n_omp: int = None, random_seed: 
 
     try: 
 
-        lightcone = p21f.run_lightcone(
-                user_params          = user_params,
-                astro_params         = astro_params,
-                cosmo_params         = cosmo_params,
-                flag_options         = flag_options,
-                lightcone_quantities = lightcone_quantities,
-                global_quantities    = global_quantities,
-                direc                = cache_path, 
-                random_seed          = random_seed,
-                write                = True,
-                **extra_params,
-                **kwargs,
-            )
+        with p21f.global_params.use(Z_HEAT_MAX=max_redshift):
+
+            lightcone = p21f.run_lightcone(
+                    user_params          = user_params,
+                    astro_params         = astro_params,
+                    cosmo_params         = cosmo_params,
+                    flag_options         = flag_options,
+                    lightcone_quantities = lightcone_quantities,
+                    global_quantities    = global_quantities,
+                    direc                = cache_path, 
+                    random_seed          = random_seed,
+                    write                = True,
+                    **extra_params,
+                    **kwargs,
+                )
     
     except Exception as e :
         
